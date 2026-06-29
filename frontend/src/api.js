@@ -1,4 +1,5 @@
-const API = "http://127.0.0.1:8000";
+const API =
+  import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export function getAccessToken() { return localStorage.getItem('access_token'); }
 export function getRefreshToken() { return localStorage.getItem('refresh_token'); }
