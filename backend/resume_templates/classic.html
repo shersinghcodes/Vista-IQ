@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8"/>
+<style>
+  @page {
+    margin: 18mm 20mm 16mm 20mm;
+    size: A4;
+  }
+
+  body {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 10pt;
+    color: #1f2937;
+    background-color: #ffffff;
+    line-height: 1.45;
+  }
+
+  /* Header — centered */
+  .hdr {
+    text-align: center;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #1d4ed8;
+    margin-bottom: 14px;
+  }
+  .hdr-name { font-size: 24pt; font-weight: bold; color: #0f172a; margin-bottom: 4px; }
+  .hdr-role { font-size: 11pt; color: #1d4ed8; font-weight: bold; margin-bottom: 4px; }
+  .hdr-contact { font-size: 9pt; color: #4b5563; }
+
+  /* Sections */
+  .sec { margin-bottom: 14px; }
+  .sec-title {
+    font-size: 10pt; font-weight: bold; color: #1d4ed8;
+    border-bottom: 1px solid #bfdbfe;
+    padding-bottom: 2px; margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+
+  .summary { font-size: 10pt; color: #374151; line-height: 1.5; }
+
+  /* Skills */
+  .sk-table { width: 100%; margin-bottom: 4px; border-collapse: collapse; }
+  .sk-table td { padding: 2px 0; vertical-align: top; }
+  .sk-lbl { width: 22%; font-size: 9.5pt; font-weight: bold; color: #1d4ed8; }
+  .sk-val { font-size: 9.5pt; color: #374151; }
+
+  /* Exp / Proj */
+  .item-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
+  .item-table td { padding: 0; vertical-align: top; }
+  .item-title { font-size: 11pt; font-weight: bold; color: #0f172a; }
+  .item-date { text-align: right; font-size: 9.5pt; color: #4b5563; }
+  
+  .exp-co { font-size: 10pt; color: #1d4ed8; font-style: italic; margin-top: 2px; margin-bottom: 4px; }
+  .proj-tech { font-size: 9pt; color: #4b5563; font-style: italic; margin-top: 2px; margin-bottom: 4px; }
+
+  ul.bullets { margin-top: 4px; margin-bottom: 12px; padding-left: 20px; }
+  ul.bullets li { font-size: 10pt; color: #1f2937; line-height: 1.4; margin-bottom: 3px; }
+
+  /* Education */
+  .edu-item { margin-bottom: 8px; }
+  .edu-deg { font-size: 10.5pt; font-weight: bold; color: #0f172a; }
+  .edu-sch { font-size: 9.5pt; color: #1d4ed8; }
+
+  /* Certifications */
+  .cert { font-size: 10pt; color: #1f2937; margin-bottom: 3px; margin-left: 10px; }
+  
+  .footer { text-align: center; font-size: 8pt; color: #6b7280; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-name">{{ name }}</div>
+  <div class="hdr-role">{{ role }}</div>
+  <div class="hdr-contact">
+    {% if contact.email %}{{ contact.email }}{% endif %}
+    {% if contact.phone %} | {{ contact.phone }}{% endif %}
+    {% if contact.github %} | {{ contact.github }}{% endif %}
+    {% if contact.linkedin %} | {{ contact.linkedin }}{% endif %}
+  </div>
+</div>
+
+{% if summary %}
+<div class="sec">
+  <div class="sec-title">Professional Summary</div>
+  <div class="summary">{{ summary }}</div>
+</div>
+{% endif %}
+
+{% if skills %}
+<div class="sec">
+  <div class="sec-title">Technical Skills</div>
+  <table class="sk-table">
+  {% for cat, items in skills.items() %}
+    <tr>
+      <td class="sk-lbl">{{ cat }}:</td>
+      <td class="sk-val">{{ items | join(", ") }}</td>
+    </tr>
+  {% endfor %}
+  </table>
+</div>
+{% endif %}
+
+{% if experience %}
+<div class="sec">
+  <div class="sec-title">Work Experience</div>
+  {% for exp in experience %}
+  <div>
+    <table class="item-table">
+      <tr>
+        <td class="item-title">{{ exp.title }}</td>
+        <td class="item-date">{{ exp.date }}</td>
+      </tr>
+    </table>
+    {% if exp.company %}<div class="exp-co">{{ exp.company }}</div>{% endif %}
+    <ul class="bullets">
+      {% for b in exp.bullets %}<li>{{ b }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if projects %}
+<div class="sec">
+  <div class="sec-title">Projects</div>
+  {% for proj in projects %}
+  <div>
+    <table class="item-table">
+      <tr>
+        <td class="item-title">{{ proj.name }}</td>
+      </tr>
+    </table>
+    {% if proj.tech %}<div class="proj-tech">Stack: {{ proj.tech | join(" | ") }}</div>{% endif %}
+    <ul class="bullets">
+      {% for b in proj.bullets %}<li>{{ b }}</li>{% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if education %}
+<div class="sec">
+  <div class="sec-title">Education</div>
+  {% for edu in education %}
+  <div class="edu-item">
+    <table class="item-table">
+      <tr>
+        <td class="edu-deg">{{ edu.degree|truncate(70, true, '') }}</td>
+        <td class="item-date">{{ edu.year }}</td>
+      </tr>
+    </table>
+    <div class="edu-sch">{{ edu.institution }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if certifications %}
+<div class="sec">
+  <div class="sec-title">Certifications</div>
+  <ul class="bullets" style="margin-bottom: 0;">
+  {% for cert in certifications %}<li>{{ cert }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="footer">Optimized for {{ company }} | {{ role }} | Vista-IQ | {{ date }}</div>
+</body>
+</html>

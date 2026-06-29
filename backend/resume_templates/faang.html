@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>FAANG Resume Template</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+
+@page {
+  size: A4;
+  margin: 18mm;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #ffffff;
+  color: #111827;
+  line-height: 1.6;
+  padding: 24px;
+  font-size: 11pt;
+}
+
+.header {
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+
+.name {
+  font-size: 32px;
+  font-weight: 800;
+  color: #111827;
+  letter-spacing: -0.8px;
+  margin-bottom: 8px;
+}
+
+.role {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 600;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #111827;
+}
+
+.contact {
+  font-size: 12.5px;
+  color: #4b5563;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #111827;
+}
+
+.contact span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.section {
+  margin-bottom: 26px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #111827;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.section + .section {
+  margin-top: 10px;
+}
+
+.summary,
+.skill-items,
+li,
+.cgpa,
+.tech-stack,
+.company,
+.subtitle {
+  color: #334155;
+}
+
+.summary {
+  font-size: 13.2px;
+  line-height: 1.75;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px 20px;
+}
+
+.skill-category {
+  font-weight: 700;
+  color: #111827;
+}
+
+.skill-items {
+  line-height: 1.7;
+}
+
+.card {
+  padding: 12px 0;
+  border-bottom: 1px solid #d1d5db;
+  margin-bottom: 16px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.subtitle {
+  font-size: 13.4px;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+.date {
+  color: #475569;
+  font-size: 12.7px;
+  font-weight: 500;
+}
+
+.company,
+.college {
+  color: #111827;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.tech-stack {
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.tech-stack span {
+  font-weight: 600;
+}
+
+ul {
+  padding-left: 18px;
+}
+
+li {
+  margin-bottom: 8px;
+  line-height: 1.65;
+}
+
+.edu-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.degree {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.cgpa {
+  margin-top: 4px;
+}
+
+.footer {
+  margin-top: 30px;
+  padding-top: 14px;
+  border-top: 1px solid #d1d5db;
+  text-align: center;
+  font-size: 11.5px;
+  color: #64748b;
+}
+
+@media (max-width: 700px) {
+  body {
+    padding: 20px;
+  }
+
+  .card-header,
+  .edu-card {
+    flex-direction: column;
+  }
+
+  .skills-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- ================= HEADER ================= -->
+
+<div class="header">
+
+  <div class="name">{{ name }}</div>
+
+  <div class="role">{{ role }}</div>
+
+  <div class="contact">
+
+    {% if contact.email %}
+    <span>{{ contact.email }}</span>
+    {% endif %}
+
+    {% if contact.phone %}
+    <span>{{ contact.phone }}</span>
+    {% endif %}
+
+    {% if contact.github %}
+    <span>{{ contact.github }}</span>
+    {% endif %}
+
+    {% if contact.linkedin %}
+    <span>{{ contact.linkedin }}</span>
+    {% endif %}
+
+    {% if contact.portfolio %}
+    <span>{{ contact.portfolio }}</span>
+    {% endif %}
+
+  </div>
+
+</div>
+
+<!-- ================= SUMMARY ================= -->
+
+{% if summary %}
+<div class="section">
+
+  <div class="section-title">
+    Professional Summary
+  </div>
+
+  <div class="summary">
+    {{ summary }}
+  </div>
+
+</div>
+{% endif %}
+
+<!-- ================= SKILLS ================= -->
+
+{% if skills %}
+<div class="section">
+
+  <div class="section-title">
+    Technical Skills
+  </div>
+
+  <div class="skills-grid">
+
+    {% for cat, items in skills.items() %}
+
+    <div class="skill-category">
+      {{ cat }}
+    </div>
+
+    <div class="skill-items">
+      {{ items | join(", ") }}
+    </div>
+
+    {% endfor %}
+
+  </div>
+
+</div>
+{% endif %}
+
+<!-- ================= EXPERIENCE ================= -->
+
+{% if experience %}
+<div class="section">
+
+  <div class="section-title">
+    Experience
+  </div>
+
+  {% for exp in experience %}
+
+  <div class="card">
+
+    <div class="card-header">
+
+      <div class="company-row">
+        {% if exp.company %}
+        <div class="company">{{ exp.company }}</div>
+        {% endif %}
+      </div>
+
+      <div class="date">
+        {{ exp.date }}
+      </div>
+
+    </div>
+
+    {% if exp.title %}
+    <div class="title">{{ exp.title }}</div>
+    {% endif %}
+
+    {% if exp.tech %}
+    <div class="tech-stack">
+      <span>Tech:</span> {{ exp.tech | join(" • ") }}
+    </div>
+    {% endif %}
+
+    <ul>
+      {% for bullet in exp.bullets %}
+      <li>{{ bullet }}</li>
+      {% endfor %}
+    </ul>
+
+  </div>
+
+  {% endfor %}
+
+</div>
+{% endif %}
+
+<!-- ================= PROJECTS ================= -->
+
+{% if projects %}
+<div class="section">
+
+  <div class="section-title">
+    Projects
+  </div>
+
+  {% for proj in projects %}
+
+  <div class="card">
+
+    <div class="card-header">
+
+      <div class="title">
+        {{ proj.name }}
+      </div>
+
+    </div>
+
+    {% if proj.tech %}
+    <div class="tech-stack">
+      <span>Stack:</span> {{ proj.tech | join(" • ") }}
+    </div>
+    {% endif %}
+
+    <ul>
+      {% for bullet in proj.bullets %}
+      <li>{{ bullet }}</li>
+      {% endfor %}
+    </ul>
+
+  </div>
+
+  {% endfor %}
+
+</div>
+{% endif %}
+
+<!-- ================= EDUCATION ================= -->
+
+{% if education %}
+<div class="section">
+
+  <div class="section-title">
+    Education
+  </div>
+
+  {% for edu in education %}
+
+  <div class="card">
+
+    <div class="edu-card">
+
+      <div>
+
+        <div class="degree">
+          {{ edu.degree }}
+        </div>
+
+        <div class="college">
+          {{ edu.institution }}
+        </div>
+
+        {% if edu.cgpa %}
+        <div class="cgpa">
+          CGPA: {{ edu.cgpa }}
+        </div>
+        {% endif %}
+
+      </div>
+
+      <div class="date">
+        {{ edu.year }}
+      </div>
+
+    </div>
+
+  </div>
+
+  {% endfor %}
+
+</div>
+{% endif %}
+
+<!-- ================= CERTIFICATIONS ================= -->
+
+{% if certifications %}
+<div class="section">
+
+  <div class="section-title">
+    Certifications
+  </div>
+
+  <div class="card">
+
+    <ul>
+      {% for cert in certifications %}
+      <li>{{ cert }}</li>
+      {% endfor %}
+    </ul>
+
+  </div>
+
+</div>
+{% endif %}
+
+<!-- ================= FOOTER ================= -->
+
+<div class="footer">
+  Optimized for FAANG • ATS Friendly • Modern Resume Template
+</div>
+
+</body>
+</html>
