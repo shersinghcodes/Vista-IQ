@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import ResumeForm from "../components/resume/ResumeForm";
-import ResumePreview from "../components/resume/ResumePreview";
+import ResumeForm from "../components/Resume/ResumeForm";
+import ResumePreview from "../components/Resume/ResumePreview";
 import Navbar from "../components/Navbar";
 
 /* ─────────────────────────────────────────────
