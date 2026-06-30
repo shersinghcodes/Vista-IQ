@@ -171,7 +171,7 @@ async def google_callback(code: str):
     # Redirect to frontend dashboard with tokens as query params
     frontend_url = settings.FRONTEND_URL.rstrip('/')
     redirect = (
-        f"{frontend_url}/dashboard"
+        f"{frontend_url}/job-market"
         f"?access_token={tokens['access_token']}"
         f"&refresh_token={tokens['refresh_token']}"
     )
