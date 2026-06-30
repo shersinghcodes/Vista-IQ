@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 import bcrypt
+from urllib.parse import urlparse
 from backend.models import User
 from backend.schemas import (
     UserRegister,
@@ -120,6 +121,23 @@ def google_status():
     }
 
 
+@router.get("/google/debug-runtime", tags=["Authentication"])
+def google_debug_runtime():
+    """
+    Temporary diagnostic endpoint for verifying which OAuth router Railway loaded.
+    Remove after confirming the live runtime.
+    """
+    frontend_url = settings.FRONTEND_URL.rstrip("/")
+    redirect_without_tokens = f"{frontend_url}/job-market"
+    return {
+        "auth_router_file": __file__,
+        "frontend_url": frontend_url,
+        "oauth_callback_path": "/auth/google/callback",
+        "expected_final_redirect_without_tokens": redirect_without_tokens,
+        "expected_final_redirect_path": urlparse(redirect_without_tokens).path,
+    }
+
+
 @router.get("/google")
 def google_login():
     """Redirect the user to Google's OAuth consent screen."""
@@ -174,5 +192,10 @@ async def google_callback(code: str):
         f"{frontend_url}/job-market"
         f"?access_token={tokens['access_token']}"
         f"&refresh_token={tokens['refresh_token']}"
+    )
+    parsed_redirect = urlparse(redirect)
+    print(
+        "[google_callback] auth_router_file="
+        f"{__file__} final_redirect_path={parsed_redirect.path}"
     )
     return RedirectResponse(url=redirect)
