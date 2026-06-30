@@ -24,7 +24,7 @@ export default function Login() {
       localStorage.setItem('refresh_token', data.refresh_token);
       const me = await (await authFetch('/users/me')).json();
       login(data.access_token, data.refresh_token, me);
-      nav('/dashboard');
+      nav('/job-market');
     } catch (err) { setError(err.message); setLoading(false); }
   };
 
