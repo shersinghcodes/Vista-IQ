@@ -20,6 +20,14 @@ class Settings(BaseSettings):
     # App
     FRONTEND_URL: str = "http://localhost:5173"
 
+    # Email / SMTP
+    MAIL_USERNAME: str = ""
+    MAIL_PASSWORD: str = ""
+    MAIL_SERVER: str = ""
+    MAIL_PORT: int = 587
+    MAIL_FROM: str = ""
+    MAIL_USE_TLS: bool = True
+
     gemini_api_key: str | None = None
 
     class Config:

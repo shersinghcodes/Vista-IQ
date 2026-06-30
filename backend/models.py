@@ -10,6 +10,11 @@ class User(Document):
     avatar_url: Optional[str] = None
     hashed_password: Optional[str] = None
     google_id: Optional[str] = None
+    is_verified: bool = True
+    verification_token: Optional[str] = None
+    verification_expiry: Optional[datetime] = None
+    reset_token: Optional[str] = None
+    reset_expiry: Optional[datetime] = None
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: Optional[datetime] = None

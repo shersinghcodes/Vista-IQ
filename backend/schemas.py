@@ -16,6 +16,15 @@ class UserLogin(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=8, description="Minimum 8 characters")
+
+
 class TokenResponse(BaseModel):
     access_token: str
     refresh_token: str

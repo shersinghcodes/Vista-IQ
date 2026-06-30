@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { apiPost, authFetch, API } from '../api';
+import { Link } from 'react-router-dom';
+import { apiPost, API } from '../api';
 import { Mail, Lock, User, Zap, Eye, EyeOff } from 'lucide-react';
 
 export default function Register() {
@@ -11,9 +10,8 @@ export default function Register() {
   const [confirm, setConfirm] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
-  const nav = useNavigate();
 
   const strength = (() => {
     let s = 0;
@@ -31,15 +29,14 @@ export default function Register() {
     if (!email.includes('@')) { setError('Enter a valid email.'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (password !== confirm) { setError('Passwords do not match.'); return; }
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setMessage('');
     try {
-      const data = await apiPost('/auth/register', { email, password, name });
-      localStorage.setItem('access_token', data.access_token);
-      localStorage.setItem('refresh_token', data.refresh_token);
-      const me = await (await authFetch('/users/me')).json();
-      login(data.access_token, data.refresh_token, me);
-      nav('/dashboard');
-    } catch (err) { setError(err.message); setLoading(false); }
+      await apiPost('/auth/register', { email, password, name });
+      setMessage('Verification email sent.');
+      setPassword('');
+      setConfirm('');
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
   };
 
   const inputStyle = {
@@ -86,6 +83,16 @@ export default function Register() {
             color: '#fca5a5', fontSize: '13px',
           }}>
             {error}
+          </div>
+        )}
+
+        {message && (
+          <div style={{
+            padding: '12px 16px', borderRadius: '10px', marginBottom: '20px',
+            background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.2)',
+            color: '#86efac', fontSize: '13px',
+          }}>
+            {message}
           </div>
         )}
 

@@ -163,6 +163,12 @@ export default function Login() {
               </div>
             </div>
 
+            <div style={{ textAlign: 'right', marginTop: '-6px' }}>
+              <Link to="/forgot-password" style={{ color: '#a5b4fc', textDecoration: 'none', fontSize: '12px', fontWeight: 600 }}>
+                Forgot Password?
+              </Link>
+            </div>
+
             <button
               type="submit" disabled={loading}
               className="btn-gradient"
