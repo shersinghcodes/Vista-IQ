@@ -20,10 +20,14 @@ if settings.gemini_api_key and settings.gemini_api_key != "your-gemini-key":
         HAS_GEMINI = True
         logger.info("Google Gemini API configured successfully.")
     except Exception as e:
-        logger.error(f"Failed to configure Google Gemini API: {e}")
+        logger.exception(f"Failed to configure Google Gemini API: {e}")
 
 
-def get_model(model_name="gemini-1.5-flash", system_instruction=None, response_mime_type=None):
+def get_model(
+    model_name="gemini-2.5-flash",
+    system_instruction=None,
+    response_mime_type=None
+):
     """Get a configured Gemini model instance."""
     if not HAS_GEMINI:
         return None

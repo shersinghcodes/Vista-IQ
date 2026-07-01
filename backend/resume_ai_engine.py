@@ -66,8 +66,9 @@ async def parse_resume_for_builder(text: str) -> dict:
                 system_instruction=system_instruction,
             )
             return _normalize_builder_parse_result(result, text)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.exception("Gemini builder parsing failed")
+            raise
 
     parsed = extract_resume_sections(text)
     return {
