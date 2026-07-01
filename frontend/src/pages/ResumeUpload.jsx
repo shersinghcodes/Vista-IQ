@@ -3,7 +3,16 @@ import { Link } from 'react-router-dom';
 import { authFetch, authFetchFormData } from '../api';
 import Navbar from '../components/Navbar';
 
-const readJson = async (res, fallback) => (res.ok ? res.json() : fallback);
+const MAX_RESUME_SIZE = 5 * 1024 * 1024;
+const readJson = async (res, fallback) => {
+  const text = await res.text().catch(() => '');
+  if (!text) return fallback;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
+};
 
 export default function ResumeUpload() {
   const [resumes, setResumes] = useState([]);
@@ -17,8 +26,8 @@ export default function ResumeUpload() {
   const fileRef = useRef(null);
 
   const fetchData = useCallback(() => {
-    authFetch('/resume/list').then(r => readJson(r, [])).then(setResumes).catch(() => {});
-    authFetch('/resume/analytics/summary').then(r => readJson(r, null)).then(setAnalytics).catch(() => {});
+    authFetch('/resume/list').then(r => r.ok ? readJson(r, []) : []).then(setResumes).catch(() => {});
+    authFetch('/resume/analytics/summary').then(r => r.ok ? readJson(r, null) : null).then(setAnalytics).catch(() => {});
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -28,11 +37,15 @@ export default function ResumeUpload() {
     setError('');
     setSuccess('');
 
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
+    if (!file.name.toLowerCase().endsWith('.pdf') || (file.type && file.type !== 'application/pdf')) {
       setError('Only PDF files are accepted.');
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size === 0) {
+      setError('This file is empty. Please choose a valid PDF resume.');
+      return;
+    }
+    if (file.size > MAX_RESUME_SIZE) {
       setError('File too large. Maximum size is 5MB.');
       return;
     }
@@ -51,10 +64,8 @@ export default function ResumeUpload() {
       const res = await authFetchFormData('/resume/upload', fd);
       clearInterval(progressInterval);
 
-      if (!res.ok) {
-        const data = await readJson(res, {});
-        throw new Error(data.detail || 'Upload failed');
-      }
+      const data = await readJson(res, {});
+      if (!res.ok) throw new Error(data.detail || 'Upload failed. Please try a different PDF.');
 
       setUploadProgress(100);
       setSuccess(`"${file.name}" uploaded successfully!`);

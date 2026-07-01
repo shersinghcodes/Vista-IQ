@@ -3,6 +3,7 @@
 import os
 import json
 import logging
+import re
 import google.generativeai as genai
 from google.generativeai.types import GenerationConfig
 from pydantic import BaseModel
@@ -68,20 +69,38 @@ async def generate_json_response(prompt: str, system_instruction: str = None) ->
 
     try:
         response = await model.generate_content_async(prompt)
-        text = response.text.strip()
+        text = (getattr(response, "text", "") or "").strip()
+        if not text:
+            raise ValueError("Gemini returned an empty response.")
         
-        # Clean up Markdown formatting if Gemini accidentally includes it
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-            
-        return json.loads(text.strip())
+        return json.loads(_extract_json_payload(text))
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse Gemini JSON response: {e}. Raw text: {response.text}")
+        raw_text = getattr(locals().get("response", None), "text", "")
+        logger.error(f"Failed to parse Gemini JSON response: {e}. Raw text: {raw_text}")
         raise
     except Exception as e:
         logger.error(f"Error in Gemini JSON generation: {e}")
         raise
+
+
+def _extract_json_payload(text: str) -> str:
+    """Return the most likely JSON object/array from a Gemini response."""
+    cleaned = text.strip()
+    fence = re.match(r"^```(?:json)?\s*(.*?)\s*```$", cleaned, re.DOTALL | re.IGNORECASE)
+    if fence:
+        cleaned = fence.group(1).strip()
+    if cleaned.startswith("{") or cleaned.startswith("["):
+        return cleaned
+
+    object_start = cleaned.find("{")
+    array_start = cleaned.find("[")
+    starts = [idx for idx in [object_start, array_start] if idx != -1]
+    if not starts:
+        return cleaned
+    start = min(starts)
+    open_char = cleaned[start]
+    close_char = "}" if open_char == "{" else "]"
+    end = cleaned.rfind(close_char)
+    if end <= start:
+        return cleaned
+    return cleaned[start:end + 1].strip()

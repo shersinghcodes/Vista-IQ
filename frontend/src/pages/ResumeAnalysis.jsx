@@ -1,8 +1,67 @@
-import { useState, useEffect } from 'react';
+import { Component, useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Radar, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS, RadialLinearScale, CategoryScale, LinearScale,
+  PointElement, LineElement, BarElement, Filler, Tooltip, Legend,
+} from 'chart.js';
 import { authFetch, API } from '../api';
 import Navbar from '../components/Navbar';
+
+ChartJS.register(
+  RadialLinearScale,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Filler,
+  Tooltip,
+  Legend,
+);
+
+const safeJson = async (res, fallback = null) => {
+  const text = await res.text().catch(() => '');
+  if (!text) return fallback;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
+};
+
+const toArray = (value) => Array.isArray(value) ? value : [];
+const toObject = (value) => value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+const scoreValue = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
+
+function AnalysisErrorBoundary({ children }) {
+  const [error, setError] = useState(null);
+  if (error) {
+    return (
+      <>
+        <Navbar />
+        <div className="max-w-3xl mx-auto px-6 py-16 text-center">
+          <div className="glass-card p-8">
+            <p className="text-4xl mb-3">!</p>
+            <h2 className="text-xl font-bold mb-2">Analysis could not be displayed</h2>
+            <p className="text-gray-500 text-sm mb-5">The resume data loaded, but part of the visualization failed. Please retry the analysis.</p>
+            <button onClick={() => setError(null)} className="btn-gradient px-5 py-2 rounded-xl text-sm font-bold">Try Again</button>
+          </div>
+        </div>
+      </>
+    );
+  }
+  return <AnalysisRenderGuard onError={setError}>{children}</AnalysisRenderGuard>;
+}
+
+class AnalysisRenderGuard extends Component {
+  componentDidCatch(error) {
+    this.props.onError(error);
+  }
+  render() {
+    return this.props.children;
+  }
+}
 
 const COMPANIES = [
   { name:'Google',    icon:'🔍', accent:'#4285F4', bg:'rgba(66,133,244,0.12)' },
@@ -27,7 +86,7 @@ const Q_TABS = ['All', 'technical', 'hr', 'behavioral', 'project', 'coding'];
 
 export default function ResumeAnalysis() {
   const { id } = useParams();
-  const [a, setA] = useState(null);
+  let [a, setA] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [qTab, setQTab] = useState('All');
   const [loading, setLoading] = useState(true);
@@ -50,14 +109,40 @@ export default function ResumeAnalysis() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewZoom, setPreviewZoom] = useState(0.65);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([
-      authFetch(`/resume/${id}/analysis`).then(r => r.ok ? r.json() : null),
-      authFetch(`/resume/${id}/questions`).then(r => r.ok ? r.json() : []),
-      authFetch(`/resume/${id}/optimizations`).then(r => r.ok ? r.json() : []),
-    ]).then(([an, q, opts]) => { setA(an); setQuestions(q || []); setOptHistory(opts || []); })
-      .catch(() => {}).finally(() => setLoading(false));
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const [analysisRes, questionRes, optRes] = await Promise.all([
+          authFetch(`/resume/${id}/analysis`),
+          authFetch(`/resume/${id}/questions`),
+          authFetch(`/resume/${id}/optimizations`),
+        ]);
+        const [an, q, opts] = await Promise.all([
+          analysisRes.ok ? safeJson(analysisRes, null) : null,
+          questionRes.ok ? safeJson(questionRes, []) : [],
+          optRes.ok ? safeJson(optRes, []) : [],
+        ]);
+        if (cancelled) return;
+        setA(an);
+        setQuestions(toArray(q));
+        setOptHistory(toArray(opts));
+        if (!analysisRes.ok && analysisRes.status !== 404) {
+          const data = await safeJson(analysisRes, {});
+          setError(data?.detail || 'Could not load resume analysis. Please try again.');
+        }
+      } catch {
+        if (!cancelled) setError('Could not connect to the server. Please check your connection and try again.');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
   }, [id]);
 
   const runOptimize = async () => {
@@ -68,8 +153,8 @@ export default function ResumeAnalysis() {
         method: 'POST',
         body: JSON.stringify({ target_company: optCompany, target_role: optRole, template: optTemplate }),
       });
-      if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Optimization failed'); }
-      const d = await res.json();
+      const d = await safeJson(res, {});
+      if (!res.ok) throw new Error(d.detail || 'Optimization failed');
       setOptResult(d);
       setOptHistory(h => [{ id: d.optimization_id, target_company: d.company, target_role: d.role, original_ats_score: d.original_ats_score, optimized_ats_score: d.optimized_ats_score, ats_improvement: d.ats_improvement, has_pdf: d.has_pdf, created_at: new Date().toISOString() }, ...h]);
       setOptTab('optimized');
@@ -105,34 +190,56 @@ export default function ResumeAnalysis() {
   };
 
   const reanalyze = async () => {
-    setAnalyzing(true);
+    setAnalyzing(true); setError('');
     try {
       const res = await authFetch(`/resume/${id}/analyze`, { method: 'POST', body: JSON.stringify({ target_role: targetRole || null, target_company: targetCompany || null }) });
-      if (res.ok) { const d = await res.json(); setA(d.analysis); const qr = await authFetch(`/resume/${id}/questions`); if (qr.ok) setQuestions(await qr.json()); setShowReanalyze(false); }
-    } catch {} finally { setAnalyzing(false); }
+      const d = await safeJson(res, {});
+      if (!res.ok) throw new Error(d.detail || 'Analysis failed. Please try again.');
+      setA(d.analysis || null);
+      const qr = await authFetch(`/resume/${id}/questions`);
+      if (qr.ok) setQuestions(toArray(await safeJson(qr, [])));
+      setShowReanalyze(false);
+    } catch (e) {
+      setError(e.message || 'Analysis failed. Please try again.');
+    } finally { setAnalyzing(false); }
   };
 
   const downloadReport = () => { if (!a) return; const b = new Blob([JSON.stringify(a, null, 2)], { type: 'application/json' }); const u = URL.createObjectURL(b); const el = document.createElement('a'); el.href = u; el.download = `resume-analysis-${id}.json`; el.click(); URL.revokeObjectURL(u); };
 
   if (loading) return (<><Navbar /><div className="flex items-center justify-center h-[80vh] gap-3 text-gray-500"><div className="w-6 h-6 border-2 border-purple-500/30 border-t-purple-500 rounded-full loader-spin" /><span>Loading analysis…</span></div></>);
-  if (!a) return (<><Navbar /><div className="max-w-4xl mx-auto px-6 py-16 text-center"><div className="bg-orbs"><div className="orb orb-1"/><div className="orb orb-2"/><div className="orb orb-3"/></div><p className="text-5xl mb-4">🔍</p><h2 className="text-2xl font-bold mb-2">No Analysis Yet</h2><p className="text-gray-500 mb-6">Go back and click "Analyze".</p><Link to="/resume" className="btn-gradient px-6 py-3 rounded-xl font-bold text-sm">← Back</Link></div></>);
+  if (!a) return (<><Navbar /><div className="max-w-4xl mx-auto px-6 py-16 text-center"><div className="bg-orbs"><div className="orb orb-1"/><div className="orb orb-2"/><div className="orb orb-3"/></div><p className="text-5xl mb-4">🔍</p><h2 className="text-2xl font-bold mb-2">{error ? 'Analysis Unavailable' : 'No Analysis Yet'}</h2><p className="text-gray-500 mb-6">{error || 'Go back and click "Analyze".'}</p><div className="flex items-center justify-center gap-3 flex-wrap"><button onClick={reanalyze} disabled={analyzing} className="btn-gradient px-6 py-3 rounded-xl font-bold text-sm disabled:opacity-60">{analyzing ? 'Analyzing...' : 'Retry Analysis'}</button><Link to="/resume" className="px-6 py-3 rounded-xl font-bold text-sm border border-white/10 hover:bg-white/5">← Back</Link></div></div></>);
 
   const scores = [
-    { label: 'Overall', value: a.overall_score, color: '#6c63ff' },
-    { label: 'ATS', value: a.ats_score, color: '#3b82f6' },
-    { label: 'Technical', value: a.technical_score, color: '#10b981' },
-    { label: 'Projects', value: a.project_score, color: '#f59e0b' },
-    { label: 'Communication', value: a.communication_score, color: '#ec4899' },
-    { label: 'Readability', value: a.readability_score, color: '#8b5cf6' },
-    { label: 'Experience', value: a.experience_score, color: '#06b6d4' },
-    { label: 'Hiring Chance', value: a.confidence_score, color: '#f43f5e' },
+    { label: 'Overall', value: scoreValue(a.overall_score), color: '#6c63ff' },
+    { label: 'ATS', value: scoreValue(a.ats_score), color: '#3b82f6' },
+    { label: 'Technical', value: scoreValue(a.technical_score), color: '#10b981' },
+    { label: 'Projects', value: scoreValue(a.project_score), color: '#f59e0b' },
+    { label: 'Communication', value: scoreValue(a.communication_score), color: '#ec4899' },
+    { label: 'Readability', value: scoreValue(a.readability_score), color: '#8b5cf6' },
+    { label: 'Experience', value: scoreValue(a.experience_score), color: '#06b6d4' },
+    { label: 'Hiring Chance', value: scoreValue(a.confidence_score), color: '#f43f5e' },
   ];
 
   const sc = (s) => s >= 75 ? 'text-emerald-400' : s >= 50 ? 'text-amber-400' : 'text-red-400';
   const pb = (p) => p === 'high' ? 'bg-red-500/15 text-red-400' : p === 'medium' ? 'bg-amber-500/15 text-amber-400' : 'bg-blue-500/15 text-blue-400';
   const db = (d) => d === 'hard' ? 'pill-hard' : d === 'medium' ? 'pill-medium' : 'pill-easy';
   const sb = (s) => s === 'critical' ? 'bg-red-500/15 text-red-400 border-red-500/20' : s === 'high' ? 'bg-amber-500/15 text-amber-400 border-amber-500/20' : 'bg-blue-500/15 text-blue-400 border-blue-500/20';
-  const filteredQ = qTab === 'All' ? questions : questions.filter(q => q.category === qTab);
+  const safeAnalysis = {
+    ...a,
+    strengths: toArray(a.strengths),
+    weaknesses: toArray(a.weaknesses),
+    skills: toArray(a.skills),
+    ats_issues: toArray(a.ats_issues),
+    missing_sections: toArray(a.missing_sections),
+    weak_areas: toArray(a.weak_areas),
+    suggestions: toArray(a.suggestions),
+    improvement_roadmap: toArray(a.improvement_roadmap),
+    keyword_analysis: toObject(a.keyword_analysis),
+    skill_gap_analysis: toObject(a.skill_gap_analysis),
+    ats_breakdown: toObject(a.ats_breakdown),
+  };
+  const filteredQ = qTab === 'All' ? questions : questions.filter(q => q?.category === qTab);
+  a = safeAnalysis;
 
   const sections = [
     { key: 'overview',  icon: '📊', label: 'Overview' },
@@ -144,7 +251,7 @@ export default function ResumeAnalysis() {
   ];
 
   return (
-    <><Navbar />
+    <AnalysisErrorBoundary><Navbar />
     <div className="max-w-6xl mx-auto px-6 py-8 relative z-10">
       <div className="bg-orbs"><div className="orb orb-1"/><div className="orb orb-2"/><div className="orb orb-3"/></div>
 
@@ -168,6 +275,12 @@ export default function ResumeAnalysis() {
             <input value={targetCompany} onChange={e => setTargetCompany(e.target.value)} placeholder="Company (optional)" className="flex-1 min-w-[200px] px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-sm focus:outline-none focus:border-violet-500/50" />
             <button onClick={reanalyze} disabled={analyzing} className="btn-gradient px-5 py-2 rounded-lg text-sm font-bold">{analyzing ? '⏳ Analyzing...' : '🔍 Analyze'}</button>
           </div>
+        </div>
+      )}
+      {error && (
+        <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm">
+          {error}
+          <button onClick={() => setError('')} className="float-right text-red-300 hover:text-red-200">x</button>
         </div>
       )}
 
@@ -359,6 +472,6 @@ export default function ResumeAnalysis() {
           </div>
         </div>
       )}
-    </div></>
+    </div></AnalysisErrorBoundary>
   );
 }

@@ -703,8 +703,11 @@ function ConfirmModal({
    Main Component
 ───────────────────────────────────────────── */
 function AIResumeInsightsPanel({ insights, state = "idle", source }) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true);
     if (state === "idle" && !insights) return null;
+    const firstNonEmpty = (...values) => values.find((value) => (
+        Array.isArray(value) ? value.length > 0 : typeof value === "string" ? value.trim() : Boolean(value)
+    ));
 
     const statusCopy = {
         loading: "Analyzing uploaded resume...",
@@ -731,23 +734,37 @@ function AIResumeInsightsPanel({ insights, state = "idle", source }) {
                         <p className="text-[11px] text-white/40">{statusCopy[state] || statusCopy.empty}</p>
                     </div>
                 </div>
+                {state === "loading" && (
+                    <div className="grid grid-cols-2 gap-2 mt-3">
+                        {[0, 1, 2, 3].map((item) => (
+                            <div key={item} className="h-14 rounded-lg bg-white/[0.04] border border-white/8 animate-pulse" />
+                        ))}
+                    </div>
+                )}
             </div>
         );
     }
 
     const scoreItems = [
+        { label: "Resume Score", value: insights.resume_strength_score },
         { label: "ATS Score", value: insights.ats_score },
-        { label: "Resume Strength", value: insights.resume_strength_score },
     ];
     const listItems = [
         { label: "Missing Skills", value: insights.missing_skills },
         { label: "Missing Keywords", value: insights.missing_keywords },
-        { label: "Weak Action Verbs", value: insights.weak_action_verbs },
-        { label: "Grammar Suggestions", value: insights.grammar_suggestions },
-        { label: "Formatting Suggestions", value: insights.formatting_suggestions },
+        { label: "Grammar Suggestions", value: firstNonEmpty(insights.grammar_suggestions, insights.grammar_issues) },
+        { label: "Formatting Suggestions", value: firstNonEmpty(insights.formatting_suggestions, insights.formatting_issues) },
+        { label: "Resume Summary Suggestions", value: firstNonEmpty(insights.resume_summary_suggestions, insights.resume_summary_improvement) },
+        { label: "Project Improvements", value: firstNonEmpty(insights.project_improvements, insights.project_improvement_suggestions) },
+        { label: "Experience Improvements", value: firstNonEmpty(insights.experience_improvements, insights.experience_improvement_suggestions) },
+        { label: "Strong Bullet Points", value: firstNonEmpty(insights.strong_bullet_points, insights.strong_bullet_point_suggestions) },
+        { label: "Industry Keywords", value: insights.industry_keywords },
+        { label: "Career Tips", value: firstNonEmpty(insights.career_tips, insights.career_improvement_tips) },
+        { label: "Weak Action Verbs", value: firstNonEmpty(insights.weak_action_verbs, insights.action_verbs_suggestions) },
         { label: "AI Recommendations", value: insights.recommendations },
     ];
     const completeness = insights.section_completeness || {};
+    const confidence = insights.section_confidence || {};
 
     return (
         <div className="border-b border-white/8 bg-[#0f0f17]">
@@ -778,11 +795,14 @@ function AIResumeInsightsPanel({ insights, state = "idle", source }) {
                         ))}
                     </div>
 
-                    {Object.keys(completeness).length > 0 && (
+                    {(Object.keys(completeness).length > 0 || Object.keys(confidence).length > 0) && (
                         <div className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
-                            <p className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Section Completeness</p>
+                            <p className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Section Confidence</p>
                             <div className="flex flex-wrap gap-1.5">
-                                {Object.entries(completeness).map(([key, complete]) => (
+                                {Object.entries({ ...completeness, ...confidence }).map(([key, value]) => {
+                                    const score = typeof value === "number" ? value : value ? 100 : 0;
+                                    const complete = score >= 70;
+                                    return (
                                     <span
                                         key={key}
                                         className={`text-[10px] px-2 py-0.5 rounded-full border ${complete
@@ -790,15 +810,19 @@ function AIResumeInsightsPanel({ insights, state = "idle", source }) {
                                             : "text-red-300/80 bg-red-500/10 border-red-500/20"
                                             }`}
                                     >
-                                        {key}
+                                        {key}{typeof value === "number" ? ` ${value}%` : ""}
                                     </span>
-                                ))}
+                                );})}
                             </div>
                         </div>
                     )}
 
                     {listItems.map((item) => {
-                        const values = Array.isArray(item.value) ? item.value.filter(Boolean) : [];
+                        const values = Array.isArray(item.value)
+                            ? item.value.filter(Boolean)
+                            : typeof item.value === "string" && item.value.trim()
+                                ? [item.value]
+                                : [];
                         if (values.length === 0) return null;
                         return (
                             <div key={item.label} className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
@@ -806,7 +830,7 @@ function AIResumeInsightsPanel({ insights, state = "idle", source }) {
                                 <ul className="space-y-1">
                                     {values.slice(0, 5).map((value, idx) => (
                                         <li key={`${item.label}-${idx}`} className="text-[11px] text-white/50 leading-snug">
-                                            {value}
+                                            {typeof value === "string" ? value : value?.description || value?.title || ""}
                                         </li>
                                     ))}
                                 </ul>
