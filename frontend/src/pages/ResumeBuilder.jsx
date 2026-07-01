@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { Download, FileJson, RotateCcw, Save, Upload } from "lucide-react";
 import ResumeForm from "../components/Resume/ResumeForm";
 import ResumePreview from "../components/Resume/ResumePreview";
 import Navbar from "../components/Navbar";
+import { authFetchFormData } from "../api";
 
 /* ─────────────────────────────────────────────
    Constants
@@ -13,10 +15,17 @@ const defaultResumeData = {
         title: "",
         email: "",
         phone: "",
+        address: "",
+        city: "",
+        state: "",
+        country: "",
         location: "",
         linkedin: "",
+        github: "",
+        portfolio: "",
         website: "",
         summary: "",
+        careerObjective: "",
     },
     experience: [],
     education: [],
@@ -24,12 +33,65 @@ const defaultResumeData = {
         technical: "",
         soft: "",
         languages: "",
+        programmingLanguages: "",
+        tools: "",
+        frameworks: "",
+        databases: "",
     },
     projects: [],
     certifications: [],
     internships: [],
     trainings: [],
     achievements: [],
+    volunteerExperience: [],
+    extraCurricular: [],
+    interests: "",
+    publications: [],
+};
+
+const MAX_RESUME_UPLOAD_SIZE = 5 * 1024 * 1024;
+const ACCEPTED_RESUME_TYPES = [".pdf", ".docx"];
+const ACCEPTED_RESUME_MIME_TYPES = new Set([
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/zip",
+    "application/octet-stream",
+    "",
+]);
+const RESUME_BUILDER_STORAGE_KEY = "vista_iq_resume_builder_live_save";
+
+const mergeResumeData = (data) => ({
+    ...defaultResumeData,
+    ...(data || {}),
+    personal: { ...defaultResumeData.personal, ...((data || {}).personal || {}) },
+    skills: { ...defaultResumeData.skills, ...((data || {}).skills || {}) },
+    experience: (data || {}).experience || [],
+    education: (data || {}).education || [],
+    projects: (data || {}).projects || [],
+    certifications: (data || {}).certifications || [],
+    internships: (data || {}).internships || [],
+    trainings: (data || {}).trainings || [],
+    achievements: (data || {}).achievements || [],
+    volunteerExperience: (data || {}).volunteerExperience || [],
+    extraCurricular: (data || {}).extraCurricular || [],
+    interests: (data || {}).interests || "",
+    publications: (data || {}).publications || [],
+});
+
+const hasResumeContent = (value) => {
+    if (Array.isArray(value)) return value.some(hasResumeContent);
+    if (value && typeof value === "object") return Object.values(value).some(hasResumeContent);
+    return typeof value === "string" ? value.trim().length > 0 : Boolean(value);
+};
+
+const isAcceptedResumeFile = (file) => {
+    const extension = `.${file.name.split(".").pop()?.toLowerCase()}`;
+    return ACCEPTED_RESUME_TYPES.includes(extension) && ACCEPTED_RESUME_MIME_TYPES.has(file.type || "");
+};
+
+const safeDownloadName = (value, fallback = "resume") => {
+    const cleaned = (value || fallback).toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+    return cleaned || fallback;
 };
 
 /* ─────────────────────────────────────────────
@@ -571,6 +633,7 @@ function Toast({ toasts }) {
    Toolbar action button
 ───────────────────────────────────────────── */
 function ActionButton({ onClick, disabled, loading, icon, label, variant = "ghost" }) {
+    const Icon = icon;
     const base = "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all disabled:opacity-40 disabled:cursor-not-allowed";
     const variants = {
         ghost: "text-white/60 hover:text-white hover:bg-white/8 border border-white/10 hover:border-white/20",
@@ -578,11 +641,18 @@ function ActionButton({ onClick, disabled, loading, icon, label, variant = "ghos
         danger: "text-red-400/70 hover:text-red-300 hover:bg-red-500/10 border border-white/10 hover:border-red-500/30",
     };
     return (
-        <button onClick={onClick} disabled={disabled || loading} className={`${base} ${variants[variant]}`}>
+        <button
+            onClick={onClick}
+            disabled={disabled || loading}
+            className={`${base} ${variants[variant]}`}
+            title={typeof label === "string" ? label : undefined}
+        >
             {loading ? (
                 <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                 </svg>
+            ) : Icon && typeof Icon !== "string" ? (
+                <Icon size={14} />
             ) : (
                 <span className="text-sm leading-none">{icon}</span>
             )}
@@ -594,22 +664,34 @@ function ActionButton({ onClick, disabled, loading, icon, label, variant = "ghos
 /* ─────────────────────────────────────────────
    Confirm modal (for reset)
 ───────────────────────────────────────────── */
-function ConfirmModal({ open, onConfirm, onCancel }) {
+function ConfirmModal({
+    open,
+    title = "Reset resume?",
+    message = "This will clear all saved data and restore the default template. This cannot be undone.",
+    confirmLabel = "Reset",
+    confirmVariant = "danger",
+    onConfirm,
+    onCancel,
+}) {
     if (!open) return null;
+    const confirmClass = confirmVariant === "danger"
+        ? "bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30"
+        : "bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30";
+
     return (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center">
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center px-4" role="dialog" aria-modal="true" aria-labelledby="resume-confirm-title">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
-            <div className="relative bg-[#16161f] border border-white/10 rounded-2xl p-6 w-80 shadow-2xl shadow-black/60">
-                <h3 className="text-sm font-semibold text-white mb-1">Reset resume?</h3>
+            <div className="relative bg-[#16161f] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl shadow-black/60">
+                <h3 id="resume-confirm-title" className="text-sm font-semibold text-white mb-1">{title}</h3>
                 <p className="text-xs text-white/50 mb-5">
-                    This will clear all saved data and restore the default template. This cannot be undone.
+                    {message}
                 </p>
                 <div className="flex gap-2 justify-end">
                     <button onClick={onCancel} className="px-4 py-2 rounded-lg text-xs font-medium text-white/60 hover:text-white border border-white/10 hover:bg-white/5 transition-all">
                         Cancel
                     </button>
-                    <button onClick={onConfirm} className="px-4 py-2 rounded-lg text-xs font-medium bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/30 transition-all">
-                        Reset
+                    <button onClick={onConfirm} className={`px-4 py-2 rounded-lg text-xs font-medium transition-all ${confirmClass}`}>
+                        {confirmLabel}
                     </button>
                 </div>
             </div>
@@ -620,18 +702,150 @@ function ConfirmModal({ open, onConfirm, onCancel }) {
 /* ─────────────────────────────────────────────
    Main Component
 ───────────────────────────────────────────── */
+function AIResumeInsightsPanel({ insights, state = "idle", source }) {
+    const [open, setOpen] = useState(false);
+    if (state === "idle" && !insights) return null;
+
+    const statusCopy = {
+        loading: "Analyzing uploaded resume...",
+        error: "AI insights are unavailable right now. Your resume data is still safe.",
+        empty: "No AI insights were returned for this resume.",
+        ready: source === "fallback_parser"
+            ? "Gemini was unavailable, so rule-based insights are shown."
+            : "Parsed from uploaded resume",
+    };
+
+    if (state !== "ready" || !insights) {
+        return (
+            <div className="border-b border-white/8 bg-[#0f0f17] px-5 py-3">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-300 text-xs font-semibold">
+                        {state === "loading" ? (
+                            <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                            </svg>
+                        ) : "AI"}
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-white/80">AI Resume Insights</p>
+                        <p className="text-[11px] text-white/40">{statusCopy[state] || statusCopy.empty}</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const scoreItems = [
+        { label: "ATS Score", value: insights.ats_score },
+        { label: "Resume Strength", value: insights.resume_strength_score },
+    ];
+    const listItems = [
+        { label: "Missing Skills", value: insights.missing_skills },
+        { label: "Missing Keywords", value: insights.missing_keywords },
+        { label: "Weak Action Verbs", value: insights.weak_action_verbs },
+        { label: "Grammar Suggestions", value: insights.grammar_suggestions },
+        { label: "Formatting Suggestions", value: insights.formatting_suggestions },
+        { label: "AI Recommendations", value: insights.recommendations },
+    ];
+    const completeness = insights.section_completeness || {};
+
+    return (
+        <div className="border-b border-white/8 bg-[#0f0f17]">
+            <button
+                onClick={() => setOpen((v) => !v)}
+                className="w-full px-5 py-3 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-300 text-xs font-semibold">
+                        AI
+                    </div>
+                    <div className="text-left">
+                        <p className="text-sm font-semibold text-white/80">AI Resume Insights</p>
+                        <p className="text-[11px] text-white/35">{statusCopy.ready}</p>
+                    </div>
+                </div>
+                <span className="text-xs text-white/30">{open ? "Hide" : "Show"}</span>
+            </button>
+
+            {open && (
+                <div className="px-5 pb-4 space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                        {scoreItems.map((item) => (
+                            <div key={item.label} className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
+                                <p className="text-[10px] uppercase tracking-wider text-white/30">{item.label}</p>
+                                <p className="text-lg font-semibold text-white/80">{Number(item.value) || 0}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {Object.keys(completeness).length > 0 && (
+                        <div className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
+                            <p className="text-[10px] uppercase tracking-wider text-white/30 mb-2">Section Completeness</p>
+                            <div className="flex flex-wrap gap-1.5">
+                                {Object.entries(completeness).map(([key, complete]) => (
+                                    <span
+                                        key={key}
+                                        className={`text-[10px] px-2 py-0.5 rounded-full border ${complete
+                                            ? "text-emerald-300/80 bg-emerald-500/10 border-emerald-500/20"
+                                            : "text-red-300/80 bg-red-500/10 border-red-500/20"
+                                            }`}
+                                    >
+                                        {key}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {listItems.map((item) => {
+                        const values = Array.isArray(item.value) ? item.value.filter(Boolean) : [];
+                        if (values.length === 0) return null;
+                        return (
+                            <div key={item.label} className="rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2">
+                                <p className="text-[10px] uppercase tracking-wider text-white/30 mb-1.5">{item.label}</p>
+                                <ul className="space-y-1">
+                                    {values.slice(0, 5).map((value, idx) => (
+                                        <li key={`${item.label}-${idx}`} className="text-[11px] text-white/50 leading-snug">
+                                            {value}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function ResumeBuilder() {
-    const [resumeData, setResumeData] = useState(defaultResumeData);
+    const [resumeData, setResumeData] = useState(() => {
+        try {
+            const saved = localStorage.getItem(RESUME_BUILDER_STORAGE_KEY);
+            return saved ? mergeResumeData(JSON.parse(saved)) : defaultResumeData;
+        } catch {
+            return defaultResumeData;
+        }
+    });
     const [activeSection, setActiveSection] = useState("personal");
     const [toasts, setToasts] = useState([]);
     const [pdfLoading, setPdfLoading] = useState(false);
+    const [uploadLoading, setUploadLoading] = useState(false);
+    const [uploadStatus, setUploadStatus] = useState("");
+    const [resumeInsights, setResumeInsights] = useState(null);
+    const [resumeInsightsState, setResumeInsightsState] = useState("idle");
+    const [resumeInsightsSource, setResumeInsightsSource] = useState("");
     const [showResetModal, setShowResetModal] = useState(false);
+    const [pendingImport, setPendingImport] = useState(null);
     const [lastSaved, setLastSaved] = useState(null);
     const previewRef = useRef(null);
+    const fileInputRef = useRef(null);
+    const parsedResumeCache = useRef(new Map());
     const autoSaveTimer = useRef(null);
 
     const addToast = useCallback((message, type = "success", duration = 3000) => {
-        const id = Date.now();
+        const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         setToasts((prev) => [...prev, { id, message, type }]);
         setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), duration);
     }, []);
@@ -640,13 +854,31 @@ export default function ResumeBuilder() {
         setResumeData((prev) => ({ ...prev, [section]: data }));
     }, []);
 
+    useEffect(() => {
+        if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        autoSaveTimer.current = setTimeout(() => {
+            try {
+                localStorage.setItem(RESUME_BUILDER_STORAGE_KEY, JSON.stringify(resumeData));
+                setLastSaved(new Date());
+            } catch {
+                addToast("Live Save could not store this resume in your browser.", "error", 4500);
+            }
+        }, 700);
+
+        return () => {
+            if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+        };
+    }, [resumeData, addToast]);
+
     const handleSave = useCallback(() => {
+        localStorage.setItem(RESUME_BUILDER_STORAGE_KEY, JSON.stringify(resumeData));
+        setLastSaved(new Date());
         addToast("Resume saved successfully", "success");
-    }, [addToast]);
+    }, [resumeData, addToast]);
 
     const handleExportJson = useCallback(() => {
         try {
-            const filename = `${(resumeData.personal.fullName || "resume").toLowerCase().replace(/\s+/g, "_")}_resume.json`;
+            const filename = `${safeDownloadName(resumeData.personal.fullName)}_resume.json`;
             const blob = new Blob([JSON.stringify(resumeData, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -656,12 +888,98 @@ export default function ResumeBuilder() {
         } catch { addToast("Export failed", "error"); }
     }, [resumeData, addToast]);
 
+    const applyImportedResume = useCallback((data, toastMessage = "Resume imported into builder") => {
+        setResumeData(mergeResumeData(data.resume_data));
+        setResumeInsights(data.insights || null);
+        setResumeInsightsState(data.insights ? "ready" : "empty");
+        setResumeInsightsSource(data.source || "");
+        setLastSaved(new Date());
+        setActiveSection("personal");
+        setPendingImport(null);
+        addToast(toastMessage, "success");
+    }, [addToast]);
+
+    const handleUploadClick = useCallback(() => {
+        fileInputRef.current?.click();
+    }, []);
+
+    const handleResumeUpload = useCallback(async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = "";
+        if (!file) return;
+
+        if (!isAcceptedResumeFile(file)) {
+            addToast("Please upload a PDF or DOCX resume.", "error");
+            return;
+        }
+        if (file.size === 0) {
+            addToast("Uploaded file is empty.", "error");
+            return;
+        }
+        if (file.size > MAX_RESUME_UPLOAD_SIZE) {
+            addToast("Resume is too large. Maximum size is 5MB.", "error");
+            return;
+        }
+
+        const cacheKey = `${file.name}:${file.size}:${file.lastModified}`;
+        const cached = parsedResumeCache.current.get(cacheKey);
+        if (cached) {
+            setUploadStatus("Populating Form...");
+            if (hasResumeContent(resumeData)) {
+                setPendingImport({ data: cached, message: "Resume imported from this session" });
+            } else {
+                applyImportedResume(cached, "Resume imported from this session");
+            }
+            setUploadStatus("");
+            return;
+        }
+
+        setUploadLoading(true);
+        setResumeInsightsState("loading");
+        setResumeInsights(null);
+        setResumeInsightsSource("");
+        setUploadStatus("Uploading Resume...");
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            await new Promise((resolve) => setTimeout(resolve, 120));
+            setUploadStatus("Extracting Resume...");
+            await new Promise((resolve) => setTimeout(resolve, 120));
+            setUploadStatus("Analyzing Resume...");
+            const res = await authFetchFormData("/resume/builder/import", formData);
+            const text = await res.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch {
+                data = { detail: text || "Resume import failed." };
+            }
+            if (!res.ok) throw new Error(data.detail || "Resume import failed.");
+
+            setUploadStatus("Populating Form...");
+            await new Promise((resolve) => setTimeout(resolve, 120));
+            parsedResumeCache.current.set(cacheKey, data);
+            if (hasResumeContent(resumeData)) {
+                setPendingImport({ data, message: "Resume imported into builder" });
+                setResumeInsightsState("idle");
+            } else {
+                applyImportedResume(data);
+            }
+        } catch (err) {
+            setResumeInsightsState("error");
+            addToast(err.message || "Could not import this resume.", "error", 4500);
+        } finally {
+            setUploadStatus("");
+            setUploadLoading(false);
+        }
+    }, [addToast, applyImportedResume, resumeData]);
+
     const handleDownloadPdf = useCallback(async () => {
         if (!previewRef.current) { addToast("Preview not ready", "error"); return; }
         setPdfLoading(true);
         try {
             const html2pdf = await loadHtml2Pdf();
-            const filename = `${(resumeData.personal.fullName || "resume").toLowerCase().replace(/\s+/g, "_")}_resume.pdf`;
+            const filename = `${safeDownloadName(resumeData.personal.fullName)}_resume.pdf`;
             await html2pdf().set({
                 margin: 0, filename,
                 image: { type: "jpeg", quality: 0.98 },
@@ -678,7 +996,11 @@ export default function ResumeBuilder() {
 
     const handleReset = useCallback(() => {
         setResumeData(defaultResumeData);
+        setResumeInsights(null);
+        setResumeInsightsState("idle");
+        setResumeInsightsSource("");
         setLastSaved(null);
+        localStorage.removeItem(RESUME_BUILDER_STORAGE_KEY);
         setShowResetModal(false);
         addToast("Resume reset to default", "info");
     }, [addToast]);
@@ -695,7 +1017,7 @@ export default function ResumeBuilder() {
 
                 {/* ── Header ── */}
                 <header className="border-b border-white/10 bg-[#0d0d14]/80 backdrop-blur-xl sticky top-0 z-50">
-                    <div className="max-w-screen-2xl mx-auto px-6 py-3 flex items-center justify-between gap-4">
+                    <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                         <div className="flex items-center gap-3 shrink-0">
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-violet-700 flex items-center justify-center shadow-lg shadow-purple-900/40">
                                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -709,27 +1031,43 @@ export default function ResumeBuilder() {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-start lg:justify-end">
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                onChange={handleResumeUpload}
+                                className="hidden"
+                            />
                             {savedLabel && <span className="text-xs text-white/25 hidden sm:inline">{savedLabel}</span>}
                             <span className="flex items-center gap-1.5 text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 rounded-full px-3 py-1">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                                 Live
                             </span>
+                            <ActionButton
+                                onClick={handleUploadClick}
+                                disabled={uploadLoading}
+                                loading={uploadLoading}
+                                icon={Upload}
+                                label={uploadLoading ? uploadStatus : "Upload Existing Resume"}
+                                variant="ghost"
+                            />
                             <div className="w-px h-5 bg-white/10" />
-                            <ActionButton onClick={handleSave} icon="💾" label="Save" variant="ghost" />
-                            <ActionButton onClick={handleExportJson} icon="{ }" label="Export JSON" variant="ghost" />
-                            <ActionButton onClick={handleDownloadPdf} loading={pdfLoading} icon="⬇" label={pdfLoading ? "Generating…" : "Download PDF"} variant="primary" />
+                            <ActionButton onClick={handleSave} icon={Save} label="Save" variant="ghost" />
+                            <ActionButton onClick={handleExportJson} icon={FileJson} label="Export JSON" variant="ghost" />
+                            <ActionButton onClick={handleDownloadPdf} loading={pdfLoading} icon={Download} label={pdfLoading ? "Generating..." : "Download PDF"} variant="primary" />
                             <div className="w-px h-5 bg-white/10" />
-                            <ActionButton onClick={() => setShowResetModal(true)} icon="↺" label="Reset" variant="danger" />
+                            <ActionButton onClick={() => setShowResetModal(true)} icon={RotateCcw} label="Reset" variant="danger" />
                         </div>
                     </div>
                 </header>
 
                 {/* ── Split Screen ── */}
-                <div className="flex flex-1 overflow-hidden" style={{ height: "calc(100vh - 53px)" }}>
+                <div className="flex flex-col lg:flex-row flex-1 overflow-visible lg:overflow-hidden lg:h-[calc(100vh-53px)]">
 
                     {/* Left: Score Panel + Form */}
-                    <div className="w-[46%] border-r border-white/10 overflow-y-auto bg-[#0d0d14] flex flex-col">
+                    <div className="w-full lg:w-[46%] border-r border-white/10 overflow-visible lg:overflow-y-auto bg-[#0d0d14] flex flex-col">
+                        <AIResumeInsightsPanel insights={resumeInsights} state={resumeInsightsState} source={resumeInsightsSource} />
                         {/* Score panel sits above the form, below the header */}
                         <ResumeScorePanel
                             resumeData={resumeData}
@@ -747,7 +1085,7 @@ export default function ResumeBuilder() {
                     </div>
 
                     {/* Right: Preview */}
-                    <div className="w-[54%] overflow-y-auto bg-[#111118] flex flex-col">
+                    <div className="w-full lg:w-[54%] overflow-visible lg:overflow-y-auto bg-[#111118] flex flex-col">
                         <div className="sticky top-0 z-10 bg-[#111118]/90 backdrop-blur border-b border-white/10 px-6 py-2.5 flex items-center justify-between">
                             <span className="text-xs text-white/40 font-medium uppercase tracking-widest">Preview — ATS Format</span>
                             <div className="flex gap-1">
@@ -756,7 +1094,7 @@ export default function ResumeBuilder() {
                                 <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
                             </div>
                         </div>
-                        <div className="flex-1 flex items-start justify-center p-8">
+                        <div className="flex-1 flex items-start justify-center p-4 sm:p-8 overflow-x-auto">
                             <div ref={previewRef} className="w-full max-w-[720px] shadow-2xl shadow-black/60 ring-1 ring-white/10">
                                 <ResumePreview resumeData={resumeData} />
                             </div>
@@ -767,6 +1105,19 @@ export default function ResumeBuilder() {
                 {/* ── Overlays ── */}
                 <Toast toasts={toasts} />
                 <ConfirmModal open={showResetModal} onConfirm={handleReset} onCancel={() => setShowResetModal(false)} />
+                <ConfirmModal
+                    open={Boolean(pendingImport)}
+                    title="Replace current resume?"
+                    message="This upload will replace the fields currently in the builder. Cancel keeps your existing edits unchanged."
+                    confirmLabel="Replace"
+                    confirmVariant="primary"
+                    onConfirm={() => pendingImport && applyImportedResume(pendingImport.data, pendingImport.message)}
+                    onCancel={() => {
+                        setPendingImport(null);
+                        setResumeInsightsState("idle");
+                        setResumeInsightsSource("");
+                    }}
+                />
             </div>
         </>
     );

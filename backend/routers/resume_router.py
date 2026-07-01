@@ -1,6 +1,9 @@
 """Resume Analysis Router — upload, parse, analyze, generate questions."""
 
+import asyncio
+import logging
 import os
+import re
 import uuid
 import json
 from pathlib import Path
@@ -12,14 +15,14 @@ from beanie import PydanticObjectId
 
 from backend.models import User, Resume, ResumeAnalysis, ResumeInterviewQuestion, ResumeOptimization
 from backend.auth.dependencies import get_current_user
-from backend.schemas import (
-    ResumeOut, ResumeAnalysisOut, ResumeAnalysisRequest, ResumeInterviewQuestionOut,
-)
+from backend.schemas import ResumeAnalysisRequest
 from backend.resume_ai_engine import (
     extract_text_from_pdf,
+    extract_text_from_docx,
     extract_resume_sections,
     analyze_resume,
     generate_interview_questions,
+    parse_resume_for_builder,
 )
 from backend.resume_optimizer import optimize_resume
 from backend.resume_pdf_generator import (
@@ -29,10 +32,20 @@ from backend.resume_pdf_generator import (
 )
 
 router = APIRouter(prefix="/resume", tags=["Resume Analysis"])
+logger = logging.getLogger(__name__)
 
 # Upload directory
 UPLOAD_DIR = Path("uploads/resumes")
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+RESUME_IMPORT_TIMEOUT_SECONDS = 45
+BUILDER_ALLOWED_TYPES = {
+    ".pdf": {"application/pdf"},
+    ".docx": {
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/zip",
+        "application/octet-stream",
+    },
+}
 
 
 def _ensure_upload_dir(user_id: str) -> Path:
@@ -40,6 +53,31 @@ def _ensure_upload_dir(user_id: str) -> Path:
     user_dir = UPLOAD_DIR / user_id
     user_dir.mkdir(parents=True, exist_ok=True)
     return user_dir
+
+
+def _safe_original_filename(filename: str) -> str:
+    """Keep only a display-safe basename for API responses and DB metadata."""
+    name = Path(filename or "resume").name
+    name = re.sub(r"[^A-Za-z0-9._ -]", "_", name).strip(" .")
+    return name[:160] or "resume"
+
+
+def _validate_builder_upload(filename: str, content_type: str | None, content: bytes) -> tuple[str, str]:
+    safe_name = _safe_original_filename(filename)
+    suffix = Path(safe_name).suffix.lower()
+    if suffix not in BUILDER_ALLOWED_TYPES:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Please upload a PDF or DOCX resume.")
+    if content_type and content_type not in BUILDER_ALLOWED_TYPES[suffix]:
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Uploaded file type does not match PDF or DOCX.")
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB.")
+    if len(content) == 0:
+        raise HTTPException(400, "Uploaded file is empty.")
+    if suffix == ".pdf" and not content.startswith(b"%PDF"):
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Uploaded file is not a valid PDF.")
+    if suffix == ".docx" and not content.startswith(b"PK"):
+        raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Uploaded file is not a valid DOCX.")
+    return safe_name, suffix
 
 
 def _serialize_analysis(analysis: ResumeAnalysis) -> dict:
@@ -141,6 +179,54 @@ async def upload_resume(
 
 
 # ─── List Resumes ────────────────────────────────────────────────────────────
+
+@router.post("/builder/import")
+async def import_resume_for_builder(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+):
+    """Upload a PDF or DOCX resume and parse it into Resume Builder data."""
+    content = await file.read()
+    filename, suffix = _validate_builder_upload(file.filename or "", file.content_type, content)
+
+    user_dir = _ensure_upload_dir(str(user.id))
+    file_path = user_dir / f"builder_import_{uuid.uuid4().hex}{suffix}"
+    file_path.write_bytes(content)
+
+    try:
+        try:
+            text = extract_text_from_pdf(str(file_path)) if suffix == ".pdf" else extract_text_from_docx(str(file_path))
+        except Exception as exc:
+            logger.warning("Resume Builder import text extraction failed for user %s: %s", user.id, exc)
+            file_type = "PDF" if suffix == ".pdf" else "DOCX"
+            raise HTTPException(400, f"We could not read this {file_type}. Please try a different resume file.")
+
+        if not text or len(text.strip()) < 20:
+            raise HTTPException(400, "Could not extract meaningful text from this resume. Please upload a text-based PDF or DOCX.")
+
+        try:
+            parsed = await asyncio.wait_for(parse_resume_for_builder(text), timeout=RESUME_IMPORT_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            logger.warning("Resume Builder import timed out for user %s", user.id)
+            raise HTTPException(status.HTTP_504_GATEWAY_TIMEOUT, "Resume parsing timed out. Please try again.")
+        except Exception as exc:
+            logger.exception("Resume Builder parsing failed for user %s: %s", user.id, exc)
+            raise HTTPException(500, "Resume parsing failed. Please try again in a moment.")
+
+        return {
+            "filename": filename,
+            "file_size": len(content),
+            "resume_data": parsed.get("resume_data", {}),
+            "insights": parsed.get("insights", {}),
+            "source": parsed.get("source", "unknown"),
+            "message": "Resume imported successfully.",
+        }
+    finally:
+        try:
+            file_path.unlink(missing_ok=True)
+        except Exception:
+            pass
+
 
 @router.get("/list")
 async def list_resumes(

@@ -17,7 +17,6 @@ export async function authFetch(url, opts = {}) {
       body: JSON.stringify({ refresh_token: getRefreshToken() }),
     });
     if (!ref.ok) {
-      console.error(`Token refresh failed (Status: ${ref.status}). Redirecting to login.`);
       clearTokens();
       window.location.href = '/';
       return res;

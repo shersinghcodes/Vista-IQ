@@ -26,7 +26,6 @@ export function AuthProvider({ children }) {
         clearTokens();
       }
     }).catch((err) => {
-      console.error(`Network error during login verification: ${err.message}`);
       clearTokens();
     }).finally(() => setLoading(false));
   }, []);

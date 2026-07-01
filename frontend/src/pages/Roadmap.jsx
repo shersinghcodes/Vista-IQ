@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { authFetch } from '../api';
 import Navbar from '../components/Navbar';
 
@@ -14,6 +14,7 @@ export default function Roadmap() {
   const [weeks, setWeeks] = useState(8);
   const [tab, setTab] = useState('overview');
   const [expandedWeek, setExpandedWeek] = useState(null);
+  const initialGenerateDone = useRef(false);
 
   const generate = async () => {
     setLoading(true);
@@ -26,7 +27,11 @@ export default function Roadmap() {
     setLoading(false);
   };
 
-  useEffect(() => { generate(); }, []);
+  useEffect(() => {
+    if (initialGenerateDone.current) return;
+    initialGenerateDone.current = true;
+    generate();
+  }, []);
 
   const tabs = [
     { key: 'overview', icon: '📊', label: 'Overview' },
@@ -37,11 +42,11 @@ export default function Roadmap() {
 
   return (
     <><Navbar />
-      <div className="max-w-6xl mx-auto px-6 py-8 relative z-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-8 relative z-10">
         <div className="bg-orbs"><div className="orb orb-1" /><div className="orb orb-2" /><div className="orb orb-3" /></div>
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 animate-slide-up">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5 animate-slide-up">
           <div>
             <h1 className="text-3xl font-extrabold mb-1">AI <span className="text-gradient">Roadmap</span></h1>
             <p className="text-gray-500 text-sm">Personalized preparation plan based on your performance analytics</p>
@@ -49,22 +54,24 @@ export default function Roadmap() {
         </div>
 
         {/* Config Bar */}
-        <div className="glass-card p-4 mb-5 flex flex-wrap items-center gap-3 animate-slide-up" style={{ animationDelay: '0.05s' }}>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">🏢 Target:</span>
-            <select value={company} onChange={e => setCompany(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-violet-500/50 text-gray-300">
+        <div className="glass-card p-4 sm:p-5 mb-5 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+          <div className="grid gap-3 md:grid-cols-[minmax(220px,1.2fr)_minmax(150px,0.7fr)_auto] md:items-end">
+            <label className="block">
+              <span className="block text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">🏢 Target</span>
+              <select value={company} onChange={e => setCompany(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-violet-500/50 text-gray-300">
               {COMPANIES.map(c => (<option key={c} value={c}>{c}</option>))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400">📅 Weeks:</span>
-            <select value={weeks} onChange={e => setWeeks(+e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-violet-500/50 text-gray-300">
+              </select>
+            </label>
+            <label className="block">
+              <span className="block text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">📅 Duration</span>
+              <select value={weeks} onChange={e => setWeeks(+e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-violet-500/50 text-gray-300">
               {[4, 6, 8, 10, 12].map(w => (<option key={w} value={w}>{w} weeks</option>))}
-            </select>
+              </select>
+            </label>
+            <button onClick={generate} disabled={loading} className="btn-gradient w-full md:w-auto md:min-w-[172px] px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50">
+              {loading ? '⏳ Generating...' : '🚀 Generate Roadmap'}
+            </button>
           </div>
-          <button onClick={generate} disabled={loading} className="btn-gradient px-4 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50">
-            {loading ? '⏳ Generating...' : '🚀 Generate Roadmap'}
-          </button>
         </div>
 
         {loading && <div className="flex items-center justify-center py-20 gap-3 text-gray-500"><div className="w-6 h-6 border-2 border-purple-500/30 border-t-purple-500 rounded-full loader-spin" /><span className="text-sm">Analyzing your data & building roadmap...</span></div>}
@@ -105,7 +112,7 @@ export default function Roadmap() {
             {/* Company Info */}
             <div className="glass-card p-5 animate-slide-up" style={{ animationDelay: '0.05s' }}>
               <h3 className="text-sm font-bold mb-3">🏢 {roadmap.target_company} - {roadmap.target_role}</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg bg-white/3 text-center"><div className="text-xs font-bold">{roadmap.company_info?.interview_rounds}</div><div className="text-[10px] text-gray-500">Rounds</div></div>
                 <div className="p-3 rounded-lg bg-white/3 text-center"><div className="text-xs font-bold capitalize">{roadmap.company_info?.coding_level}</div><div className="text-[10px] text-gray-500">Coding Level</div></div>
                 <div className="p-3 rounded-lg bg-white/3 text-center"><div className="text-xs font-bold">{roadmap.company_info?.primary?.length}</div><div className="text-[10px] text-gray-500">Focus Areas</div></div>
@@ -129,21 +136,21 @@ export default function Roadmap() {
           {tab === 'weekly' && <div className="space-y-3">
             {roadmap.weekly_plan?.map((week, i) => (<div key={i} className="animate-slide-up" style={{ animationDelay: `${0.03 * i}s` }}>
               <div onClick={() => setExpandedWeek(expandedWeek === week.week ? null : week.week)} className={`glass-card p-4 cursor-pointer transition-all hover:border-violet-500/20 ${expandedWeek === week.week ? 'border-violet-500/30' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-start sm:items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center text-sm font-bold shrink-0">W{week.week}</div>
-                    <div><div className="text-sm font-bold">{week.phase}</div>
-                      <div className="flex gap-1.5 mt-1">{week.focus_topics?.map(t => (<span key={t.key || t} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{t.icon} {t.name}</span>))}</div>
+                    <div className="min-w-0"><div className="text-sm font-bold">{week.phase}</div>
+                      <div className="flex flex-wrap gap-1.5 mt-1">{week.focus_topics?.map(t => (<span key={t.key || t} className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-gray-400">{t.icon} {t.name}</span>))}</div>
                     </div>
                   </div>
-                  <div className="text-right shrink-0"><div className="text-xs text-gray-400">🎯 {week.coding_target} problems</div><div className="text-[10px] text-gray-600">{expandedWeek === week.week ? '▲' : '▼'}</div></div>
+                  <div className="text-left sm:text-right shrink-0"><div className="text-xs text-gray-400">🎯 {week.coding_target} problems</div><div className="text-[10px] text-gray-600">{expandedWeek === week.week ? '▲' : '▼'}</div></div>
                 </div>
               </div>
               {expandedWeek === week.week && <div className="glass-card p-4 mt-1 border-violet-500/15 animate-slide-up">
                 <h4 className="text-xs font-bold text-gray-400 mb-2">📋 Goals</h4>
                 <ul className="text-xs text-gray-400 list-disc list-inside mb-3">{week.goals?.map((g, j) => (<li key={j}>{g}</li>))}</ul>
                 <h4 className="text-xs font-bold text-gray-400 mb-2">📅 Daily Tasks</h4>
-                <div className="grid grid-cols-7 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5">
                   {week.daily_tasks?.map((day, j) => (<div key={j} className="p-2 rounded-lg bg-white/3 border border-white/5">
                     <div className="text-[10px] font-bold text-violet-400 mb-1">{day.day_label}</div>
                     {day.tasks?.map((task, k) => (<div key={k} className="text-[9px] text-gray-400 mb-0.5"><span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${task.type === 'study' ? 'bg-blue-400' : task.type === 'practice' ? 'bg-emerald-400' : task.type === 'revision' ? 'bg-amber-400' : 'bg-purple-400'}`} />{task.title.length > 25 ? task.title.slice(0, 25) + '...' : task.title}</div>))}
@@ -182,7 +189,7 @@ export default function Roadmap() {
                 <span className="text-gray-600 text-sm">↗</span>
               </div>
             </a>))}
-            {(!roadmap.resources || roadmap.resources.length === 0) && <div className="col-span-2 glass-card p-10 text-center text-gray-500">No specific resources recommended yet</div>}
+            {(!roadmap.resources || roadmap.resources.length === 0) && <div className="md:col-span-2 glass-card p-10 text-center text-gray-500">No specific resources recommended yet</div>}
           </div>}
         </>}
       </div></>

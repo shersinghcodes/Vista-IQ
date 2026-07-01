@@ -1,13 +1,11 @@
 """Coding Prep Router - problems, bookmarks, roadmap, company paths, analytics."""
 
-import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
 
 from backend.models import User, CodingSubmission
 from backend.auth.dependencies import get_current_user
-from backend.coding_problems import PROBLEMS, DSA_ROADMAP, COMPANY_PATHS, get_problem, get_problems
+from backend.coding_problems import PROBLEMS, DSA_ROADMAP, COMPANY_PATHS, estimate_time, get_problem, get_problems
 
 router = APIRouter(prefix="/coding", tags=["Coding Prep"])
 
@@ -94,10 +92,13 @@ async def toggle_bookmark(
         return {"bookmarked": False, "message": "Bookmark removed"}
 
     prob = get_problem(body.problem_id)
+    if not prob:
+        raise HTTPException(status_code=404, detail="Problem not found")
+
     bm = CodingSubmission(
         user_id=str(current_user.id),
         problem_id=body.problem_id,
-        problem_title=prob["title"] if prob else f"Problem {body.problem_id}",
+        problem_title=prob["title"],
         language="n/a",
         code="",
         status="bookmarked",
@@ -146,4 +147,5 @@ def get_problem_detail(problem_id: int, current_user: User = Depends(get_current
     if not prob:
         raise HTTPException(status_code=404, detail="Problem not found")
     safe = {k: v for k, v in prob.items() if k not in ("test_cases", "starter_python", "starter_js", "py_setup")}
+    safe["estimated_time"] = estimate_time(prob)
     return safe

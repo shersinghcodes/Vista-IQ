@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { authFetch, authFetchFormData } from '../api';
 import Navbar from '../components/Navbar';
 
+const readJson = async (res, fallback) => (res.ok ? res.json() : fallback);
+
 export default function ResumeUpload() {
   const [resumes, setResumes] = useState([]);
   const [analytics, setAnalytics] = useState(null);
@@ -15,8 +17,8 @@ export default function ResumeUpload() {
   const fileRef = useRef(null);
 
   const fetchData = useCallback(() => {
-    authFetch('/resume/list').then(r => r.json()).then(setResumes).catch(() => {});
-    authFetch('/resume/analytics/summary').then(r => r.json()).then(setAnalytics).catch(() => {});
+    authFetch('/resume/list').then(r => readJson(r, [])).then(setResumes).catch(() => {});
+    authFetch('/resume/analytics/summary').then(r => readJson(r, null)).then(setAnalytics).catch(() => {});
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -50,7 +52,7 @@ export default function ResumeUpload() {
       clearInterval(progressInterval);
 
       if (!res.ok) {
-        const data = await res.json();
+        const data = await readJson(res, {});
         throw new Error(data.detail || 'Upload failed');
       }
 
@@ -88,7 +90,7 @@ export default function ResumeUpload() {
         method: 'POST',
         body: JSON.stringify({}),
       });
-      const data = await res.json();
+      const data = await readJson(res, {});
       if (res.ok) {
         setSuccess('✅ Analysis complete! Redirecting to results...');
         fetchData();

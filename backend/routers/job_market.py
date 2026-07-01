@@ -3,11 +3,6 @@ from backend.job_market_service import search_jobs
 
 router = APIRouter()
 
-from fastapi import APIRouter
-from backend.job_market_service import search_jobs
-
-router = APIRouter()
-
 @router.get("/jobs/search")
 async def jobs(
     role: str,

@@ -7,19 +7,20 @@ const Label = ({ children }) => (
     </label>
 );
 
-const Input = ({ value, onChange, placeholder, type = "text" }) => (
+const Input = ({ value, onChange, placeholder, type = "text", ...props }) => (
     <input
         type={type}
-        value={value}
+        value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/20 focus:outline-none focus:border-purple-500/60 focus:bg-white/8 transition-all"
+        {...props}
     />
 );
 
 const Textarea = ({ value, onChange, placeholder, rows = 3 }) => (
     <textarea
-        value={value}
+        value={value ?? ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
@@ -94,8 +95,32 @@ function PersonalSection({ data, onChange }) {
                     <Input value={data.location} onChange={set("location")} placeholder="City, State" />
                 </div>
                 <div>
+                    <Label>Country</Label>
+                    <Input value={data.country} onChange={set("country")} placeholder="Country" />
+                </div>
+                <div className="col-span-2">
+                    <Label>Address</Label>
+                    <Input value={data.address} onChange={set("address")} placeholder="Street address" />
+                </div>
+                <div>
+                    <Label>City</Label>
+                    <Input value={data.city} onChange={set("city")} placeholder="City" />
+                </div>
+                <div>
+                    <Label>State</Label>
+                    <Input value={data.state} onChange={set("state")} placeholder="State" />
+                </div>
+                <div>
                     <Label>Website</Label>
                     <Input value={data.website} onChange={set("website")} placeholder="yoursite.com" />
+                </div>
+                <div>
+                    <Label>GitHub</Label>
+                    <Input value={data.github} onChange={set("github")} placeholder="github.com/yourname" />
+                </div>
+                <div className="col-span-2">
+                    <Label>Portfolio</Label>
+                    <Input value={data.portfolio} onChange={set("portfolio")} placeholder="portfolio link" />
                 </div>
                 <div className="col-span-2">
                     <Label>LinkedIn</Label>
@@ -108,6 +133,15 @@ function PersonalSection({ data, onChange }) {
                         onChange={set("summary")}
                         placeholder="2–3 sentences highlighting your experience and impact..."
                         rows={4}
+                    />
+                </div>
+                <div className="col-span-2">
+                    <Label>Career Objective</Label>
+                    <Textarea
+                        value={data.careerObjective}
+                        onChange={set("careerObjective")}
+                        placeholder="Target role, goals, and career direction..."
+                        rows={3}
                     />
                 </div>
             </div>
@@ -401,6 +435,42 @@ function SkillsSection({ data, onChange }) {
                         value={data.languages}
                         onChange={set("languages")}
                         placeholder="English (Native), Spanish (Fluent)"
+                    />
+                </div>
+                <div>
+                    <Label>Programming Languages</Label>
+                    <Textarea
+                        value={data.programmingLanguages}
+                        onChange={set("programmingLanguages")}
+                        placeholder="Python, JavaScript, Java..."
+                        rows={2}
+                    />
+                </div>
+                <div>
+                    <Label>Tools</Label>
+                    <Textarea
+                        value={data.tools}
+                        onChange={set("tools")}
+                        placeholder="Git, Docker, Jira, Postman..."
+                        rows={2}
+                    />
+                </div>
+                <div>
+                    <Label>Frameworks</Label>
+                    <Textarea
+                        value={data.frameworks}
+                        onChange={set("frameworks")}
+                        placeholder="React, FastAPI, Django..."
+                        rows={2}
+                    />
+                </div>
+                <div>
+                    <Label>Databases</Label>
+                    <Textarea
+                        value={data.databases}
+                        onChange={set("databases")}
+                        placeholder="MongoDB, PostgreSQL, MySQL..."
+                        rows={2}
                     />
                 </div>
             </div>
@@ -874,6 +944,72 @@ function AchievementsSection({ data, onChange }) {
 }
 
 /* ── Nav Tabs ── */
+function SimpleEntriesSection({ data = [], onChange, icon, label, addLabel, prefix }) {
+    const addEntry = () => {
+        onChange([
+            ...data,
+            { id: `${prefix}-${Date.now()}`, title: "", organization: "", date: "", description: "" },
+        ]);
+    };
+
+    const updateEntry = (id, updates) => {
+        onChange(data.map((item) => (item.id === id ? { ...item, ...updates } : item)));
+    };
+
+    const removeEntry = (id) => onChange(data.filter((item) => item.id !== id));
+
+    return (
+        <div>
+            <SectionHeader icon={icon} label={label} count={data.length} />
+            <div className="space-y-3">
+                {data.map((item, idx) => (
+                    <Card key={item.id}>
+                        <div className="flex items-start justify-between mb-3">
+                            <span className="text-xs font-medium text-emerald-400/70 bg-emerald-500/10 border border-emerald-500/20 rounded-full px-2.5 py-0.5">
+                                {label} {idx + 1}
+                            </span>
+                            <RemoveButton onClick={() => removeEntry(item.id)} />
+                        </div>
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="col-span-2">
+                                <Label>Title</Label>
+                                <Input value={item.title} onChange={(v) => updateEntry(item.id, { title: v })} placeholder="Title" />
+                            </div>
+                            <div>
+                                <Label>Date</Label>
+                                <Input value={item.date} onChange={(v) => updateEntry(item.id, { date: v })} placeholder="2024" />
+                            </div>
+                            <div className="col-span-3">
+                                <Label>Organization</Label>
+                                <Input value={item.organization} onChange={(v) => updateEntry(item.id, { organization: v })} placeholder="Organization / venue" />
+                            </div>
+                            <div className="col-span-3">
+                                <Label>Description</Label>
+                                <Textarea value={item.description} onChange={(v) => updateEntry(item.id, { description: v })} placeholder="Brief details..." rows={2} />
+                            </div>
+                        </div>
+                    </Card>
+                ))}
+            </div>
+            <AddButton onClick={addEntry} label={addLabel} />
+        </div>
+    );
+}
+
+function InterestsSection({ data, onChange }) {
+    return (
+        <div>
+            <SectionHeader icon="*" label="Interests" />
+            <Textarea
+                value={data}
+                onChange={onChange}
+                placeholder="Open source, chess, technical writing..."
+                rows={4}
+            />
+        </div>
+    );
+}
+
 const NAV = [
     { id: "personal", label: "Personal", icon: "👤" },
     { id: "experience", label: "Experience", icon: "💼" },
@@ -884,12 +1020,16 @@ const NAV = [
     { id: "certifications", label: "Certs", icon: "🏅" },
     { id: "trainings", label: "Training", icon: "📚" },
     { id: "achievements", label: "Achievement", icon: "🏆" },
+    { id: "volunteerExperience", label: "Volunteer", icon: "+" },
+    { id: "extraCurricular", label: "Activities", icon: "*" },
+    { id: "publications", label: "Publications", icon: "#" },
+    { id: "interests", label: "Interests", icon: "*" },
 ];
 
 /* ── Main Export ── */
 export default function ResumeForm({ resumeData, updateSection, activeSection, setActiveSection }) {
     return (
-        <div className="flex flex-col h-full">
+        <div className="resume-form-panel flex flex-col h-full">
             {/* Section Nav */}
             <nav className="sticky top-0 z-10 bg-[#0d0d14]/95 backdrop-blur border-b border-white/8 px-4 pt-4 pb-0">
                 <div className="flex gap-1 overflow-x-auto scrollbar-none pb-0">
@@ -965,7 +1105,53 @@ export default function ResumeForm({ resumeData, updateSection, activeSection, s
                         onChange={(d) => updateSection("achievements", d)}
                     />
                 )}
+                {activeSection === "volunteerExperience" && (
+                    <SimpleEntriesSection
+                        data={resumeData.volunteerExperience ?? []}
+                        onChange={(d) => updateSection("volunteerExperience", d)}
+                        icon="+"
+                        label="Volunteer Experience"
+                        addLabel="Add Volunteer Experience"
+                        prefix="volunteer"
+                    />
+                )}
+                {activeSection === "extraCurricular" && (
+                    <SimpleEntriesSection
+                        data={resumeData.extraCurricular ?? []}
+                        onChange={(d) => updateSection("extraCurricular", d)}
+                        icon="*"
+                        label="Extra Curricular"
+                        addLabel="Add Activity"
+                        prefix="activity"
+                    />
+                )}
+                {activeSection === "publications" && (
+                    <SimpleEntriesSection
+                        data={resumeData.publications ?? []}
+                        onChange={(d) => updateSection("publications", d)}
+                        icon="#"
+                        label="Publications"
+                        addLabel="Add Publication"
+                        prefix="publication"
+                    />
+                )}
+                {activeSection === "interests" && (
+                    <InterestsSection
+                        data={resumeData.interests ?? ""}
+                        onChange={(d) => updateSection("interests", d)}
+                    />
+                )}
             </div>
+            <style>{`
+                @media (max-width: 768px) {
+                    .resume-form-panel .grid {
+                        grid-template-columns: minmax(0, 1fr) !important;
+                    }
+                    .resume-form-panel [class*="col-span-"] {
+                        grid-column: 1 / -1 !important;
+                    }
+                }
+            `}</style>
         </div>
     );
 }

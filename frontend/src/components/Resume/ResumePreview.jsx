@@ -76,18 +76,6 @@ const BulletList = ({ bullets }) => {
     );
 };
 
-/* ── Contact Row ── */
-const ContactItem = ({ label, value }) => {
-    if (isEmpty(value)) return null;
-    return (
-        <span style={{ fontSize: "10px", color: "#333" }}>
-            {label && (
-                <span style={{ color: "#666", marginRight: "2px" }}>{label}: </span>
-            )}
-            {value}
-        </span>
-    );
-};
 
 /* ── Skill Pill ── */
 const SkillGroup = ({ label, value }) => {
@@ -110,8 +98,45 @@ const SkillGroup = ({ label, value }) => {
 };
 
 /* ── Main Preview Component ── */
+const SimpleEntrySection = ({ title, entries }) => {
+    const filtered = entries?.filter((item) => !isEmpty(item.title)) ?? [];
+    if (!filtered.length) return null;
+    return (
+        <Section>
+            <SectionTitle>{title}</SectionTitle>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {filtered.map((item) => (
+                    <div key={item.id}>
+                        <EntryHeader left={item.title} right={item.date} />
+                        <EntrySubHeader left={item.organization} />
+                        {!isEmpty(item.description) && (
+                            <p style={{ fontSize: "10.5px", color: "#222", margin: "3px 0 0 0", lineHeight: "1.55" }}>
+                                {item.description}
+                            </p>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </Section>
+    );
+};
+
 export default function ResumePreview({ resumeData }) {
-    const { personal, experience, internships, education, skills, projects, trainings, achievements, certifications } = resumeData;
+    const {
+        personal,
+        experience,
+        internships,
+        education,
+        skills,
+        projects,
+        trainings,
+        achievements,
+        certifications,
+        volunteerExperience,
+        extraCurricular,
+        interests,
+        publications,
+    } = resumeData;
 
     const hasExperience = experience?.some(
         (e) => !isEmpty(e.company) || !isEmpty(e.title)
@@ -125,19 +150,29 @@ export default function ResumePreview({ resumeData }) {
     const hasSkills =
         !isEmpty(skills?.technical) ||
         !isEmpty(skills?.soft) ||
-        !isEmpty(skills?.languages);
+        !isEmpty(skills?.languages) ||
+        !isEmpty(skills?.programmingLanguages) ||
+        !isEmpty(skills?.tools) ||
+        !isEmpty(skills?.frameworks) ||
+        !isEmpty(skills?.databases);
     const hasProjects = projects?.some((p) => !isEmpty(p.name));
     const hasTrainings = trainings?.some(
         (t) => !isEmpty(t.title) || !isEmpty(t.organization)
     );
     const hasAchievements = achievements?.some((a) => !isEmpty(a.title));
     const hasCerts = certifications?.some((c) => !isEmpty(c.name));
+    const hasVolunteerExperience = volunteerExperience?.some((item) => !isEmpty(item.title));
+    const hasActivities = extraCurricular?.some((item) => !isEmpty(item.title));
+    const hasPublications = publications?.some((item) => !isEmpty(item.title));
+    const hasInterests = !isEmpty(interests);
 
     const contactLine = [
         personal.email,
         personal.phone,
-        personal.location,
+        personal.location || [personal.city, personal.state, personal.country].filter(Boolean).join(", "),
         personal.linkedin,
+        personal.github,
+        personal.portfolio,
         personal.website,
     ]
         .filter(Boolean)
@@ -214,6 +249,15 @@ export default function ResumePreview({ resumeData }) {
                     <SectionTitle>Professional Summary</SectionTitle>
                     <p style={{ fontSize: "10.5px", color: "#222", lineHeight: "1.6", margin: 0 }}>
                         {personal.summary}
+                    </p>
+                </Section>
+            )}
+
+            {!isEmpty(personal.careerObjective) && (
+                <Section>
+                    <SectionTitle>Career Objective</SectionTitle>
+                    <p style={{ fontSize: "10.5px", color: "#222", lineHeight: "1.6", margin: 0 }}>
+                        {personal.careerObjective}
                     </p>
                 </Section>
             )}
@@ -428,6 +472,10 @@ export default function ResumePreview({ resumeData }) {
             )}
 
             {/* ── Certifications ── */}
+            <SimpleEntrySection title="Volunteer Experience" entries={volunteerExperience} />
+            <SimpleEntrySection title="Activities" entries={extraCurricular} />
+            <SimpleEntrySection title="Publications" entries={publications} />
+
             {hasCerts && (
                 <Section>
                     <SectionTitle>Certifications</SectionTitle>
@@ -464,8 +512,19 @@ export default function ResumePreview({ resumeData }) {
                 <Section>
                     <SectionTitle>Skills</SectionTitle>
                     <SkillGroup label="Technical" value={skills.technical} />
+                    <SkillGroup label="Programming Languages" value={skills.programmingLanguages} />
+                    <SkillGroup label="Tools" value={skills.tools} />
+                    <SkillGroup label="Frameworks" value={skills.frameworks} />
+                    <SkillGroup label="Databases" value={skills.databases} />
                     <SkillGroup label="Soft Skills" value={skills.soft} />
                     <SkillGroup label="Languages" value={skills.languages} />
+                </Section>
+            )}
+
+            {hasInterests && (
+                <Section>
+                    <SectionTitle>Interests</SectionTitle>
+                    <p style={{ fontSize: "10.5px", color: "#222", lineHeight: "1.6", margin: 0 }}>{interests}</p>
                 </Section>
             )}
 
@@ -478,7 +537,11 @@ export default function ResumePreview({ resumeData }) {
                 !hasProjects &&
                 !hasTrainings &&
                 !hasAchievements &&
-                !hasCerts && (
+                !hasCerts &&
+                !hasVolunteerExperience &&
+                !hasActivities &&
+                !hasPublications &&
+                !hasInterests && (
                     <div
                         style={{
                             display: "flex",

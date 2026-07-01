@@ -4,12 +4,20 @@ import Navbar from '../components/Navbar';
 // ─── Constants ───────────────────────────────────────────────────────────────
 const FILLERS = ['um','umm','uh','uhh','er','ah','like','you know','basically','actually','literally','honestly','right','so','well','anyway','i mean','sort of','kind of'];
 const FILLER_RE = new RegExp(`\\b(${FILLERS.join('|')})\\b`, 'gi');
+const FILLER_SPLIT_RE = new RegExp(`\\b(${FILLERS.join('|')})\\b`, 'gi');
+const FILLER_SET = new Set(FILLERS);
 const IDEAL_WPM_MIN = 120;
 const IDEAL_WPM_MAX = 160;
 const LONG_PAUSE_MS = 3000;
 
 const sc = v => v >= 75 ? 'text-emerald-400' : v >= 50 ? 'text-amber-400' : 'text-red-400';
-const scBg = v => v >= 75 ? 'from-emerald-600 to-emerald-500' : v >= 50 ? 'from-amber-600 to-amber-500' : 'from-red-600 to-red-500';
+
+function HighlightedTranscript({ text }) {
+  return String(text).split(FILLER_SPLIT_RE).map((part, index) => {
+    const isFiller = FILLER_SET.has(part.toLowerCase());
+    return isFiller ? <mark key={`${part}-${index}`}>{part}</mark> : part;
+  });
+}
 
 export default function ConfidenceAnalysis() {
   const [listening, setListening] = useState(false);
@@ -24,7 +32,6 @@ export default function ConfidenceAnalysis() {
   const [fillerMap, setFillerMap] = useState({});
   const [wpm, setWpm] = useState(0);
   const [wpmHistory, setWpmHistory] = useState([]);
-  const [pauseCount, setPauseCount] = useState(0);
   const [longPauses, setLongPauses] = useState(0);
   const [scores, setScores] = useState({ confidence: 0, fluency: 0, communication: 0, consistency: 0 });
 
@@ -37,7 +44,6 @@ export default function ConfidenceAnalysis() {
   const wordCountRef = useRef(0);
   const fillerCountRef = useRef(0);
   const fillerMapRef = useRef({});
-  const pauseCountRef = useRef(0);
   const longPauseRef = useRef(0);
   const wpmHistRef = useRef([]);
   const transcriptRef = useRef([]);
@@ -132,9 +138,7 @@ export default function ConfidenceAnalysis() {
           setFillerMap({ ...fillerMapRef.current });
         }
 
-        // Highlight fillers in transcript
-        const highlighted = finalText.trim().replace(FILLER_RE, '<mark>$1</mark>');
-        transcriptRef.current = [...transcriptRef.current, { text: finalText.trim(), highlighted, time: Math.round((Date.now() - startTimeRef.current) / 1000) }];
+        transcriptRef.current = [...transcriptRef.current, { text: finalText.trim(), time: Math.round((Date.now() - startTimeRef.current) / 1000) }];
         setTranscript([...transcriptRef.current]);
 
         calcScores();
@@ -143,7 +147,6 @@ export default function ConfidenceAnalysis() {
 
     recognition.onerror = (e) => {
       if (e.error === 'no-speech') return; // ignore
-      console.error('Speech error:', e.error);
     };
 
     recognition.onend = () => {
@@ -161,10 +164,10 @@ export default function ConfidenceAnalysis() {
     setElapsed(0);
     setTranscript([]); setCurrentText('');
     setTotalWords(0); setFillerCount(0); setFillerMap({});
-    setWpm(0); setWpmHistory([]); setPauseCount(0); setLongPauses(0);
+    setWpm(0); setWpmHistory([]); setLongPauses(0);
     setScores({ confidence: 0, fluency: 0, communication: 0, consistency: 0 });
     wordCountRef.current = 0; fillerCountRef.current = 0; fillerMapRef.current = {};
-    pauseCountRef.current = 0; longPauseRef.current = 0; wpmHistRef.current = [];
+    longPauseRef.current = 0; wpmHistRef.current = [];
     transcriptRef.current = [];
 
     // Timer
@@ -212,7 +215,11 @@ export default function ConfidenceAnalysis() {
   };
 
   useEffect(() => () => {
-    if (recognitionRef.current) { recognitionRef.current.stop(); recognitionRef.current = null; }
+    if (recognitionRef.current) {
+      clearInterval(recognitionRef.current._wpmSampler);
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
     clearInterval(timerRef.current);
     clearInterval(pauseCheckRef.current);
   }, []);
@@ -299,7 +306,7 @@ export default function ConfidenceAnalysis() {
                 {transcript.map((t, i) => (
                   <div key={i} className="flex gap-2 text-sm">
                     <span className="text-[10px] font-mono text-gray-600 shrink-0 mt-1">{fmtTime(t.time)}</span>
-                    <span className="text-gray-300 leading-relaxed" dangerouslySetInnerHTML={{ __html: t.highlighted }} />
+                    <span className="text-gray-300 leading-relaxed"><HighlightedTranscript text={t.text} /></span>
                   </div>
                 ))}
                 {currentText && <div className="flex gap-2 text-sm"><span className="text-[10px] font-mono text-gray-600 shrink-0 mt-1">...</span><span className="text-gray-500 italic">{currentText}</span></div>}

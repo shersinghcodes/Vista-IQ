@@ -33,12 +33,10 @@ function JobMarket() {
 
                         setLocation(city);
 
-                    });
+                    })
+                    .catch(() => {});
             },
-            (error) => {
-                console.error(error);
-                console.error("Location permission denied");
-            }
+            () => {}
         );
     };
 
@@ -59,8 +57,7 @@ function JobMarket() {
             setTotalJobs(data.count || 0);
             setPage(currentPage);
 
-        } catch (err) {
-            console.error(err);
+        } catch {
             alert("Failed to fetch jobs");
         }
 

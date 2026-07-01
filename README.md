@@ -111,13 +111,11 @@ Vista-IQ/
 |           |-- CompanySelection.jsx
 |           |-- AIInterviewRoom.jsx
 |           |-- CodingProblems.jsx
-|           |-- CodingSession.jsx
 |           |-- ResumeUpload.jsx
 |           |-- ResumeAnalysis.jsx
 |           |-- ResumeBuilder.jsx
 |           |-- Roadmap.jsx
 |           |-- ConfidenceAnalysis.jsx
-|           |-- EmotionDetection.jsx
 |           |-- Profile.jsx
 |
 |-- assets/

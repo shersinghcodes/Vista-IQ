@@ -241,6 +241,150 @@ PROBLEMS = [
         "time_complexity": "O(n)", "space_complexity": "O(1)",
         "links": {"leetcode": "https://leetcode.com/problems/trapping-rain-water/", "gfg": "https://www.geeksforgeeks.org/trapping-rain-water/"},
     },
+    {
+        "id": 21, "title": "Kth Largest Element in an Array", "category": "heap", "difficulty": "medium",
+        "description": "Given an integer array nums and an integer k, return the kth largest element in the array.",
+        "examples": [{"input": "nums = [3,2,1,5,6,4], k = 2", "output": "5"}],
+        "constraints": ["1 <= k <= nums.length <= 100000"],
+        "hints": ["Use a min heap of size k.", "Quickselect can solve this in average O(n)."],
+        "tags": ["heap", "quickselect", "array"],
+        "companies": ["Amazon", "Meta", "Microsoft", "Google"],
+        "approach": "Maintain a min heap with the k largest values seen so far. The heap root is the answer.",
+        "time_complexity": "O(n log k)", "space_complexity": "O(k)",
+        "links": {"leetcode": "https://leetcode.com/problems/kth-largest-element-in-an-array/"},
+    },
+    {
+        "id": 22, "title": "Implement Queue using Stacks", "category": "queue", "difficulty": "easy",
+        "description": "Implement a first-in-first-out queue using only two stacks.",
+        "examples": [{"input": "push(1), push(2), peek(), pop()", "output": "1, 1"}],
+        "constraints": ["Use only standard stack operations"],
+        "hints": ["Use one input stack and one output stack.", "Move items only when output stack is empty."],
+        "tags": ["queue", "stack", "design"],
+        "companies": ["Microsoft", "Amazon", "Apple"],
+        "approach": "Push to the input stack. For pop or peek, pour input into output only when output is empty.",
+        "time_complexity": "Amortized O(1)", "space_complexity": "O(n)",
+        "links": {"leetcode": "https://leetcode.com/problems/implement-queue-using-stacks/"},
+    },
+    {
+        "id": 23, "title": "Subsets", "category": "backtracking", "difficulty": "medium",
+        "description": "Given an integer array of unique elements, return all possible subsets.",
+        "examples": [{"input": "nums = [1,2,3]", "output": "[[],[1],[2],[1,2],[3],[1,3],[2,3],[1,2,3]]"}],
+        "constraints": ["1 <= nums.length <= 10"],
+        "hints": ["At each index, choose or skip the value.", "Backtracking naturally builds the power set."],
+        "tags": ["backtracking", "recursion", "array"],
+        "companies": ["Meta", "Google", "Amazon"],
+        "approach": "Depth-first search with a current path. Add each path to results, then explore remaining choices.",
+        "time_complexity": "O(n * 2^n)", "space_complexity": "O(n)",
+        "links": {"leetcode": "https://leetcode.com/problems/subsets/"},
+    },
+    {
+        "id": 24, "title": "Word Search", "category": "backtracking", "difficulty": "medium",
+        "description": "Given a character board and a word, return true if the word exists by walking adjacent cells.",
+        "examples": [{"input": 'board = [["A","B","C","E"],["S","F","C","S"]], word = "ABCCED"', "output": "true"}],
+        "constraints": ["Cells may not be reused in the same path"],
+        "hints": ["DFS from matching starting cells.", "Mark visited cells during the current path."],
+        "tags": ["backtracking", "matrix", "dfs"],
+        "companies": ["Amazon", "Microsoft", "Google"],
+        "approach": "Try DFS from every cell. Match one character at a time and backtrack visited state.",
+        "time_complexity": "O(m*n*4^L)", "space_complexity": "O(L)",
+        "links": {"leetcode": "https://leetcode.com/problems/word-search/"},
+    },
+    {
+        "id": 25, "title": "Implement Trie", "category": "trie", "difficulty": "medium",
+        "description": "Implement insert, search, and startsWith for a trie prefix tree.",
+        "examples": [{"input": 'insert("apple"), search("app"), startsWith("app")', "output": "false, true"}],
+        "constraints": ["Words contain lowercase English letters"],
+        "hints": ["Each node stores children and an end-of-word flag."],
+        "tags": ["trie", "design", "string"],
+        "companies": ["Google", "Amazon", "Microsoft"],
+        "approach": "Walk or create nodes for each character. Mark terminal nodes for complete words.",
+        "time_complexity": "O(L)", "space_complexity": "O(total characters)",
+        "links": {"leetcode": "https://leetcode.com/problems/implement-trie-prefix-tree/"},
+    },
+    {
+        "id": 26, "title": "Number of Connected Components", "category": "union_find", "difficulty": "medium",
+        "description": "Given n nodes and undirected edges, return the number of connected components.",
+        "examples": [{"input": "n = 5, edges = [[0,1],[1,2],[3,4]]", "output": "2"}],
+        "constraints": ["0 <= edges.length <= n*(n-1)/2"],
+        "hints": ["Union each edge.", "Count unique parents at the end."],
+        "tags": ["union-find", "graph"],
+        "companies": ["Google", "Meta", "Amazon"],
+        "approach": "Use disjoint set union with path compression and union by rank.",
+        "time_complexity": "O(E alpha(V))", "space_complexity": "O(V)",
+        "links": {"leetcode": "https://leetcode.com/problems/number-of-connected-components-in-an-undirected-graph/"},
+    },
+    {
+        "id": 27, "title": "Single Number", "category": "bit_manipulation", "difficulty": "easy",
+        "description": "Every element appears twice except one. Find the single one.",
+        "examples": [{"input": "nums = [4,1,2,1,2]", "output": "4"}],
+        "constraints": ["Solve in linear time and constant extra space"],
+        "hints": ["XOR cancels equal numbers."],
+        "tags": ["bit-manipulation", "array"],
+        "companies": ["Amazon", "Microsoft", "Apple"],
+        "approach": "XOR all values. Duplicate pairs become 0 and the unique value remains.",
+        "time_complexity": "O(n)", "space_complexity": "O(1)",
+        "links": {"leetcode": "https://leetcode.com/problems/single-number/"},
+    },
+    {
+        "id": 28, "title": "Top K Frequent Elements", "category": "heap", "difficulty": "medium",
+        "description": "Return the k most frequent elements in an integer array.",
+        "examples": [{"input": "nums = [1,1,1,2,2,3], k = 2", "output": "[1,2]"}],
+        "constraints": ["1 <= k <= number of unique elements"],
+        "hints": ["Count frequencies first.", "Heap or bucket sort both work."],
+        "tags": ["hash-map", "heap", "bucket-sort"],
+        "companies": ["Meta", "Amazon", "Google"],
+        "approach": "Build a frequency map, then keep the top k entries using a heap or frequency buckets.",
+        "time_complexity": "O(n log k)", "space_complexity": "O(n)",
+        "links": {"leetcode": "https://leetcode.com/problems/top-k-frequent-elements/"},
+    },
+    {
+        "id": 29, "title": "Lowest Common Ancestor of a Binary Tree", "category": "trees", "difficulty": "medium",
+        "description": "Given a binary tree, find the lowest common ancestor of two nodes.",
+        "examples": [{"input": "root = [3,5,1,6,2,0,8], p = 5, q = 1", "output": "3"}],
+        "constraints": ["All node values are unique"],
+        "hints": ["Return current node when it matches p or q.", "If both sides return a node, current is the LCA."],
+        "tags": ["tree", "dfs", "recursion"],
+        "companies": ["Amazon", "Microsoft", "Google", "Meta"],
+        "approach": "Postorder DFS returns p, q, or an ancestor candidate from each subtree.",
+        "time_complexity": "O(n)", "space_complexity": "O(h)",
+        "links": {"leetcode": "https://leetcode.com/problems/lowest-common-ancestor-of-a-binary-tree/"},
+    },
+    {
+        "id": 30, "title": "Course Schedule", "category": "graphs", "difficulty": "medium",
+        "description": "Given prerequisites, determine if all courses can be finished.",
+        "examples": [{"input": "numCourses = 2, prerequisites = [[1,0]]", "output": "true"}],
+        "constraints": ["Detect whether a directed graph has a cycle"],
+        "hints": ["Use topological sort.", "A cycle means the schedule is impossible."],
+        "tags": ["graph", "topological-sort", "bfs", "dfs"],
+        "companies": ["Google", "Amazon", "Meta"],
+        "approach": "Build indegrees and process zero-indegree nodes with Kahn's algorithm.",
+        "time_complexity": "O(V+E)", "space_complexity": "O(V+E)",
+        "links": {"leetcode": "https://leetcode.com/problems/course-schedule/"},
+    },
+    {
+        "id": 31, "title": "Employees Earning More Than Their Managers", "category": "sql", "difficulty": "easy",
+        "description": "Write a SQL query to find employees who earn more than their managers.",
+        "examples": [{"input": "Employee(id, name, salary, managerId)", "output": "employee names"}],
+        "constraints": ["Use a self join"],
+        "hints": ["Join employee rows to manager rows by managerId."],
+        "tags": ["sql", "self-join"],
+        "companies": ["Amazon", "Microsoft", "Google"],
+        "approach": "Self join Employee e to Employee m on e.managerId = m.id and filter e.salary > m.salary.",
+        "time_complexity": "Depends on indexes", "space_complexity": "O(1)",
+        "links": {"leetcode": "https://leetcode.com/problems/employees-earning-more-than-their-managers/"},
+    },
+    {
+        "id": 32, "title": "Median of Two Sorted Arrays", "category": "binary_search", "difficulty": "hard",
+        "description": "Given two sorted arrays, return the median of the two sorted arrays in O(log(m+n)).",
+        "examples": [{"input": "nums1 = [1,3], nums2 = [2]", "output": "2.0"}],
+        "constraints": ["Overall run time complexity should be O(log(m+n))"],
+        "hints": ["Binary search the smaller array.", "Partition both arrays so left side has half the elements."],
+        "tags": ["binary-search", "array"],
+        "companies": ["Google", "Meta", "Amazon"],
+        "approach": "Binary search a partition in the smaller array and derive the matching partition in the other array.",
+        "time_complexity": "O(log min(m,n))", "space_complexity": "O(1)",
+        "links": {"leetcode": "https://leetcode.com/problems/median-of-two-sorted-arrays/"},
+    },
 ]
 
 # DSA Roadmap for the preparation section
@@ -249,20 +393,29 @@ DSA_ROADMAP = [
     {"week": 2, "title": "Strings & Sliding Window", "topics": ["String Manipulation", "Sliding Window", "Two Pointers"], "problems": [2, 7, 10, 14]},
     {"week": 3, "title": "Linked Lists", "topics": ["Reversal", "Merge", "Fast/Slow Pointer"], "problems": [6, 11]},
     {"week": 4, "title": "Stacks & Queues", "topics": ["Stack Operations", "Monotonic Stack", "Queue"], "problems": [7, 20]},
-    {"week": 5, "title": "Trees & Graphs", "topics": ["BFS", "DFS", "Binary Trees"], "problems": [17]},
+    {"week": 5, "title": "Trees & Graphs", "topics": ["BFS", "DFS", "Binary Trees"], "problems": [17, 29, 30]},
     {"week": 6, "title": "Dynamic Programming", "topics": ["1D DP", "2D DP", "Knapsack"], "problems": [5, 9, 19]},
-    {"week": 7, "title": "Advanced Patterns", "topics": ["Greedy", "Intervals", "Design"], "problems": [12, 13, 15, 16]},
-    {"week": 8, "title": "Hard Problems & Review", "topics": ["Two Pointers Advanced", "DP Advanced", "System Design"], "problems": [20, 16]},
+    {"week": 7, "title": "Advanced Patterns", "topics": ["Greedy", "Intervals", "Design"], "problems": [12, 13, 15, 16, 21, 28]},
+    {"week": 8, "title": "Hard Problems & Review", "topics": ["Backtracking", "Trie", "Union Find", "SQL"], "problems": [20, 23, 24, 25, 26, 31, 32]},
 ]
 
 # Company-specific preparation paths
 COMPANY_PATHS = {
-    "Google": {"focus": ["Arrays", "Trees", "DP", "Graph"], "problems": [1, 4, 5, 7, 8, 15, 17, 20], "tips": "Google loves algorithmic thinking. Focus on optimal time complexity and clean code."},
-    "Amazon": {"focus": ["Arrays", "Trees", "Design", "DP"], "problems": [1, 3, 6, 9, 12, 17, 18, 19], "tips": "Amazon asks Leadership Principles behavioral questions alongside coding. Practice both."},
-    "Meta": {"focus": ["Arrays", "Strings", "Graphs", "DP"], "problems": [1, 2, 7, 13, 14, 15, 17], "tips": "Meta values speed. Practice solving medium problems in under 20 minutes."},
-    "Microsoft": {"focus": ["Arrays", "Linked Lists", "Trees", "Design"], "problems": [1, 4, 6, 11, 15, 16, 17, 18], "tips": "Microsoft focuses on clean object-oriented design and edge case handling."},
-    "Apple": {"focus": ["Arrays", "Strings", "Linked Lists"], "problems": [1, 6, 11, 18], "tips": "Apple values elegant, readable solutions. Focus on code quality over brute force."},
+    "Google": {"focus": ["Arrays", "Trees", "DP", "Graph"], "problems": [1, 4, 5, 7, 8, 15, 17, 20, 25, 30, 32], "tips": "Google loves algorithmic thinking. Focus on optimal time complexity and clean code."},
+    "Amazon": {"focus": ["Arrays", "Trees", "Design", "DP"], "problems": [1, 3, 6, 9, 12, 17, 18, 19, 21, 24, 28], "tips": "Amazon asks Leadership Principles behavioral questions alongside coding. Practice both."},
+    "Meta": {"focus": ["Arrays", "Strings", "Graphs", "DP"], "problems": [1, 2, 7, 13, 14, 15, 17, 23, 28, 30], "tips": "Meta values speed. Practice solving medium problems in under 20 minutes."},
+    "Microsoft": {"focus": ["Arrays", "Linked Lists", "Trees", "Design"], "problems": [1, 4, 6, 11, 15, 16, 17, 18, 22, 29, 31], "tips": "Microsoft focuses on clean object-oriented design and edge case handling."},
+    "Apple": {"focus": ["Arrays", "Strings", "Linked Lists"], "problems": [1, 6, 11, 18, 22, 27], "tips": "Apple values elegant, readable solutions. Focus on code quality over brute force."},
 }
+
+
+def estimate_time(problem: dict) -> str:
+    difficulty = problem.get("difficulty")
+    if difficulty == "easy":
+        return "15 min"
+    if difficulty == "medium":
+        return "30 min"
+    return "45 min"
 
 
 def get_problem(problem_id: int) -> dict | None:
@@ -278,6 +431,6 @@ def get_problems(category: str = None, difficulty: str = None) -> list[dict]:
     return [
         {"id": p["id"], "title": p["title"], "category": p["category"],
          "difficulty": p["difficulty"], "tags": p["tags"], "companies": p.get("companies", []),
-         "links": p.get("links", {})}
+         "estimated_time": estimate_time(p), "links": p.get("links", {})}
         for p in result
     ]

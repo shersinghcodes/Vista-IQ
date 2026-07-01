@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { authFetch } from '../api';
 import Navbar from '../components/Navbar';
 import { useProfile } from '../context/ProfileContext';
@@ -46,6 +46,7 @@ export default function JobMatching() {
   const [compareList, setCompareList] = useState([]);
   const [compareResult, setCompareResult] = useState(null);
   const [comparing, setComparing] = useState(false);
+  const initialGenerateDone = useRef(false);
 
   const generate = async () => {
     setLoading(true); setError('');
@@ -77,7 +78,11 @@ export default function JobMatching() {
     if (profileRole && role === 'SDE') setRole(profileRole);
   }, [profileRole]);
 
-  useEffect(()=>{ generate(); },[]);
+  useEffect(()=>{
+    if (initialGenerateDone.current) return;
+    initialGenerateDone.current = true;
+    generate();
+  },[]);
 
   const hp = report?.hiring_probability || {};
   const gaps = report?.skill_gap_analysis || {};
@@ -85,7 +90,7 @@ export default function JobMatching() {
   const roleOptions = ROLES.includes(role) ? ROLES : [role, ...ROLES];
 
   return (<><Navbar/>
-    <div className="max-w-6xl mx-auto px-4 py-6 relative z-10">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-7 sm:py-8 relative z-10">
       <div className="bg-orbs"><div className="orb orb-1"/><div className="orb orb-2"/><div className="orb orb-3"/></div>
 
       {/* Header */}
@@ -97,19 +102,32 @@ export default function JobMatching() {
       </div>
 
       {/* Controls */}
-      <div className="glass-card p-4 mb-5 flex flex-wrap items-center gap-3 animate-slide-up" style={{animationDelay:'0.05s'}}>
-        <select value={role} onChange={e=>setRole(e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-violet-500/50 text-gray-300">
-          {roleOptions.map(r=><option key={r} value={r}>{r}</option>)}
-        </select>
-        <select value={exp} onChange={e=>setExp(+e.target.value)} className="bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs outline-none focus:border-violet-500/50 text-gray-300">
-          {[0,1,2,3,5,7].map(y=><option key={y} value={y}>{y===0?'Fresher / Intern':`${y}+ Years Exp`}</option>)}
-        </select>
-        <button onClick={generate} disabled={loading} className="btn-gradient px-5 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50 ml-auto">
-          {loading?'⏳ Analyzing...':'🚀 Generate Match'}
-        </button>
+      <div className="glass-card p-4 sm:p-5 mb-5 animate-slide-up" style={{animationDelay:'0.05s'}}>
+        <div className="grid gap-3 md:grid-cols-[minmax(220px,1.1fr)_minmax(170px,0.75fr)_auto] md:items-end">
+          <label className="block">
+            <span className="block text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">Target Role</span>
+            <select value={role} onChange={e=>setRole(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-violet-500/50 text-gray-300">
+              {roleOptions.map(r=><option key={r} value={r}>{r}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-[10px] uppercase tracking-wide text-gray-500 font-semibold mb-1.5">Experience</span>
+            <select value={exp} onChange={e=>setExp(+e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs outline-none focus:border-violet-500/50 text-gray-300">
+              {[0,1,2,3,5,7].map(y=><option key={y} value={y}>{y===0?'Fresher / Intern':`${y}+ Years Exp`}</option>)}
+            </select>
+          </label>
+          <button onClick={generate} disabled={loading} className="btn-gradient w-full md:w-auto md:min-w-[164px] px-5 py-2 rounded-lg text-xs font-semibold disabled:opacity-50">
+            {loading?'⏳ Analyzing...':'🚀 Generate Match'}
+          </button>
+        </div>
       </div>
 
-      {error && <div className="glass-card p-4 mb-4 text-red-400 text-sm border-red-500/20">{error} {error.includes('resume')&&<a href="/resume" className="underline text-violet-400 ml-2">→ Analyze Resume</a>}</div>}
+      {error && <div className="glass-card p-4 sm:p-5 mb-5 text-sm border-red-500/20 animate-slide-up">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-between">
+          <div className="text-red-400 leading-relaxed">{error}</div>
+          {error.includes('resume')&&<a href="/resume" className="shrink-0 text-xs font-semibold text-violet-300 bg-violet-500/10 border border-violet-500/20 rounded-lg px-3 py-2 hover:bg-violet-500/15 transition-colors">→ Analyze Resume</a>}
+        </div>
+      </div>}
       {loading && <div className="flex items-center justify-center py-20 gap-3 text-gray-500"><div className="w-6 h-6 border-2 border-purple-500/30 border-t-purple-500 rounded-full loader-spin"/><span className="text-sm">AI analyzing your profile across {Object.keys({}).length||13} companies...</span></div>}
 
       {report && !loading && <>

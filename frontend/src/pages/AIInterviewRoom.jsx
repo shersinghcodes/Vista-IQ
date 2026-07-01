@@ -61,6 +61,7 @@ export default function AIInterviewRoom() {
   const chatRef = useRef(null);
   const recogRef = useRef(null);
   const timerRef = useRef(null);
+  const initialStartDone = useRef(false);
 
   useEffect(() => {
     timerRef.current = setInterval(() => setTimer(t => t + 1), 1000);
@@ -71,7 +72,11 @@ export default function AIInterviewRoom() {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  useEffect(() => { startSession(); }, []);
+  useEffect(() => {
+    if (initialStartDone.current) return;
+    initialStartDone.current = true;
+    startSession();
+  }, []);
 
   const speak = useCallback((text) => {
     if (!ttsEnabled || !window.speechSynthesis) return;
@@ -111,42 +116,56 @@ export default function AIInterviewRoom() {
 
   const startSession = async () => {
     setLoading(true);
-    const res = await authFetch('/ai-interview/start', {
-      method: 'POST',
-      body: JSON.stringify({ round_type: roundType, target_company: company, target_role: targetRole, difficulty }),
-    });
-    const data = await res.json();
-    setSessionId(data.session_id); setQNum(1);
-    setMessages([{ role: 'ai', content: data.question, qNum: 1 }]);
-    setLoading(false); speak(data.question);
+    try {
+      const res = await authFetch('/ai-interview/start', {
+        method: 'POST',
+        body: JSON.stringify({ round_type: roundType, target_company: company, target_role: targetRole, difficulty }),
+      });
+      if (!res.ok) throw new Error('Unable to start interview.');
+      const data = await res.json();
+      setSessionId(data.session_id); setQNum(1);
+      setMessages([{ role: 'ai', content: data.question, qNum: 1 }]);
+      speak(data.question);
+    } catch {
+      setMessages([{ role: 'ai', content: 'Unable to start the interview right now. Please go back and try again.', qNum: 1 }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const submitAnswer = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || !sessionId) return;
     if (listening) { recogRef.current?.stop(); setListening(false); }
     window.speechSynthesis?.cancel();
     const userMsg = { role: 'user', content: input.trim() };
     setMessages(prev => [...prev, userMsg]);
     setInput(''); setLoading(true);
-    const res = await authFetch('/ai-interview/respond', {
-      method: 'POST', body: JSON.stringify({ session_id: sessionId, answer: userMsg.content }),
-    });
-    const data = await res.json();
-    setMessages(prev => [...prev, {
-      role: 'feedback', score: data.score, feedback: data.feedback,
-      strengths: data.strengths, improvements: data.improvements,
-    }]);
-    if (qNum >= maxQ) {
-      const endRes = await authFetch('/ai-interview/end', {
-        method: 'POST', body: JSON.stringify({ session_id: sessionId }),
+    try {
+      const res = await authFetch('/ai-interview/respond', {
+        method: 'POST', body: JSON.stringify({ session_id: sessionId, answer: userMsg.content }),
       });
-      setResults(await endRes.json()); setFinished(true); clearInterval(timerRef.current);
-    } else {
-      setQNum(q => q + 1);
-      setMessages(prev => [...prev, { role: 'ai', content: data.next_question, qNum: qNum + 1 }]);
-      speak(data.next_question);
+      if (!res.ok) throw new Error('Unable to submit answer.');
+      const data = await res.json();
+      setMessages(prev => [...prev, {
+        role: 'feedback', score: data.score, feedback: data.feedback,
+        strengths: data.strengths, improvements: data.improvements,
+      }]);
+      if (qNum >= maxQ) {
+        const endRes = await authFetch('/ai-interview/end', {
+          method: 'POST', body: JSON.stringify({ session_id: sessionId }),
+        });
+        if (!endRes.ok) throw new Error('Unable to finish interview.');
+        setResults(await endRes.json()); setFinished(true); clearInterval(timerRef.current);
+      } else {
+        setQNum(q => q + 1);
+        setMessages(prev => [...prev, { role: 'ai', content: data.next_question, qNum: qNum + 1 }]);
+        speak(data.next_question);
+      }
+    } catch {
+      setMessages(prev => [...prev, { role: 'feedback', score: 0, feedback: 'Something went wrong while submitting. Please try again.', strengths: [], improvements: [] }]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const meta = ROUND_META[roundType] || ROUND_META.hr;

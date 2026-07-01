@@ -9,16 +9,16 @@ import {
 
 const NAV_ITEMS = [
   { to: '/job-market', icon: Briefcase, label: 'Job Market' },
-  { to: '/ai-interview', icon: Mic, label: 'AI Interview' },
   { to: '/company-prep', icon: Building2, label: 'Company Prep' },
+  { to: '/ai-interview', icon: Mic, label: 'AI Interview' },
   { to: '/coding', icon: Code2, label: 'Coding' },
   { to: '/resume', icon: FileText, label: 'Resume' },
   { to: "/resume-builder", icon: FileText, label: "Resume Builder" },
   // { to: '/emotion', icon: Brain, label: 'Emotion' },
-  { to: '/confidence', icon: Activity, label: 'Speech' },
   { to: '/roadmap', icon: Map, label: 'Roadmap' },
   { to: '/job-matching', icon: Target, label: 'Job Match' },
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/confidence', icon: Activity, label: 'Speech' },
   { to: "/profile", icon: User, label: "Profile" }
 ];
 
